@@ -1,7 +1,6 @@
 module trie
 using Plots
 using Combinatorics
-
 #時系列データセットから2つの時系列データを全組み合わせで取り出して、それらのDTW距離を出す。
 function calcDtwDistances(sequences)
     #時系列データセットから2つの時系列データを全組み合わせで取り出す
@@ -123,8 +122,7 @@ function sequenceToLouds(sequence)
             #初期化
             tmpSearchTargetNode = []
             #検索対象のノードのbitAry上のインデック
-            for searchElm in searchTargetNode                
-                println("eee")
+            for searchElm in searchTargetNode
                 #調査対象のsequence上のインデックスを取得。
                 #ラベルから取得するが、現在のseqIdx　- 1 と同じ値の要素は取得しない
                 #あくまで過去の要素が対象
@@ -151,12 +149,10 @@ function sequenceToLouds(sequence)
                     targetChildrenNum = 0
                     #ターゲットノードの子ノードの階層にいるノードの数
                     foundSameLevelChildrenNum = 0
-
                     #ターゲットノードの兄弟を数え上げた後に各ブロックの数を数えだすフラグ
                     countFalse = false
                     #ターゲットノードの子ノードを数えだすフラグ
                     countChild = false
-                    println("souka_eachlevelsnumber", eachLevelNodesNumber)
                     for baElm in bitAry[searchElm[1]:end]
                         #次の値から検索開始
                         bitAryIdx += 1
@@ -193,7 +189,6 @@ function sequenceToLouds(sequence)
                     end
                     #ある場合
                     if targetChildrenNum > 0
-                        println("kokokiteru1")
                     #子ノード達のラベルIdx取得
                         childrenLabelIdxes = searchElm[2] + foundOtherNodesNum + 1:searchElm[2] + foundOtherNodesNum + targetChildrenNum
                     #子ノード達の中で、今来ている値と同じ値のインデックスを取得  
@@ -208,49 +203,41 @@ function sequenceToLouds(sequence)
                             #なければ子ノードを追加する
                             insert!(bitAry, bitAryIdx, false)#ここはOK
                             push!(bitAry, false)#ここはOK
-                            push!(label[childrenLabelIdxes[end] + 1], insert!(foundMatchLabelIdxes, 1, elm))#ここはOK
+                            insert!(label, childrenLabelIdxes[end] + 1, insert!(foundMatchLabelIdxes, 1, elm))#ここはOK
                             #searchTargetに追加する
                             push!(tmpSearchTargetNode, [bitAryIdx, childrenLabelIdxes[end] + 1, searchElm[3] + 1, foundSameLevelChildrenNum + 1])#ここはOK
-                            if length(eachLevelNodesNumber) < searchElm[3] 
+                            if length(eachLevelNodesNumber) < searchElm[3] + 1
                                 push!(eachLevelNodesNumber, 1)
                             else
                                 eachLevelNodesNumber[searchElm[3]] += 1
                             end
                         end
                     else
-                        println("kokossyo", bitAryIdx)    
                         #なければ子ノード追加
-                        insert!(bitAry, bitAryIdx, true)#これはOK
-                        push!(bitAry, false)#これはOK
-                        println("sonnanaa21", foundMatchLabelIdxes)
-                        insert!(label, searchElm[2] + foundOtherNodesNum, insert!(foundMatchLabelIdxes, 1, elm))#これはOK
-                        println("sonnanaa", label)
+                        insert!(bitAry, bitAryIdx, true)
+                        push!(bitAry, false)
+                        insert!(label, searchElm[2] + foundOtherNodesNum, insert!(foundMatchLabelIdxes, 1, elm))
                         #searchTargetに追加する
                         push!(tmpSearchTargetNode, [bitAryIdx, searchElm[2] + foundOtherNodesNum, searchElm[3] + 1, foundSameLevelChildrenNum + 1])#これはOK
-                        if length(eachLevelNodesNumber) < searchElm[3] 
+                        if length(eachLevelNodesNumber) < searchElm[3] + 1
                             push!(eachLevelNodesNumber, 1)
                         else
                             eachLevelNodesNumber[searchElm[3]] += 1
                         end
                     end
-
                 end
             end
             #次回の検索用配列にコピー
             searchTargetNode = tmpSearchTargetNode
-
-
         end
         #ルートの子ノードに追加する
         #子供があれば
         if length(eachLevelNodesNumber) > 0
-            println("rootChildrenNumber", eachLevelNodesNumber[1])
             #同じ要素が子ノードにあるか検索
             sameRootChildLabelIdx = findfirst(isequal(elm), [labelElm[1] for labelElm in label[1:eachLevelNodesNumber[1]]])
             
             #あれば
             if sameRootChildLabelIdx !== nothing
-                println("koko")
                 #一致したラベルに現在のシーケンスインデックスを追加
                 push!(label[sameRootChildLabelIdx], seqIdx)
                 #ターゲットノードの1の位置を[bitaryIdx, labelIdx, 階層の番号, 同じ階層のノードの中で左から何番目か]の配列で先頭に追加する
@@ -268,12 +255,44 @@ function sequenceToLouds(sequence)
             push!(bitAry, false)
             insert!(label, 1, [elm, seqIdx])
             push!(eachLevelNodesNumber, 1)
-            println("maakoko")
         end
+        println("bitAry ", bitAry)
+        println("label ", label)
+
+    end
+    trieToPuml(bitAry, label)
+end
+
+function trieToPuml(bitAry, label)
+    open("tree.puml", "w") do file
+        write(file, "'This file was automatically generated.\n@startuml tree_diagram\nobject 0\n")
         
-        println("bitAry", bitAry)
-        println("label", label)
-        println("searchTargetNode", searchTargetNode)
+        bitCnt = 0
+        for bit in bitAry[3:end]
+            if bit == true
+                bitCnt += 1
+                write(file, "object ", string(bitCnt), "\n", string(bitCnt), " : value=", string(label[bitCnt][1]), "\n", string(bitCnt), " : seqIdx=", string(label[bitCnt][2:end], "\n"))
+            end
+        end
+        children = []
+        parent = 0
+        labelCnt = 0
+        for bit in bitAry[3:end]
+            if bit == true
+                labelCnt += 1
+                push!(children, labelCnt)
+            elseif bit == false 
+                if length(children) > 0
+                    for child in children
+                        write(file, string(parent), "--", string(child), "\n")
+                    end
+                    children = []
+                end
+                parent += 1
+            end
+        end
+        write(file, "@enduml")
     end
 end
+
 end

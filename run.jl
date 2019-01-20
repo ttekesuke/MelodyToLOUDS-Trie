@@ -19,8 +19,4 @@ trie.calcDtwDistances(sequences)
 ############## メロディを表示する ##############
 trie.plotMelody(sequences)
 
-ary = [2, 4]
-insert!(ary, 1, -1)
-
-
 
