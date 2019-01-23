@@ -140,7 +140,7 @@ function sequenceToLouds(sequence)
                     #子ノードがなければ子ノードを追加する
                     #bitAryに追加する位置を決める 
                     #カウンター　初期値は渡されたターゲットノードのインデックス
-                    bitAryIdx = searchElm[1] - 1
+                    bitAryIdx = searchElm[1]
                     #探索時に見つかった、関係ないノードの終端を示す0の数     
                     foundOtherNodesFalseNum = 0
                     #探索時に見つかった、関係ないノードの数
@@ -153,12 +153,18 @@ function sequenceToLouds(sequence)
                     countFalse = false
                     #ターゲットノードの子ノードを数えだすフラグ
                     countChild = false
-                    for baElm in bitAry[searchElm[1]:end]
+                    for baElm in bitAry[searchElm[1] + 1:end]
+                        #同じ階層内の一番右端のノードを見ている場合、即座にcountFalseを開始する
+                        if eachLevelNodesNumber[searchElm[3]] - searchElm[4] == 0
+                            countFalse = true
+                            println("fu-n")
+                        end
                         #次の値から検索開始
                         bitAryIdx += 1
                         if countFalse == true
                             if baElm == false
                                 foundOtherNodesFalseNum += 1
+                                println("nankaookune", foundOtherNodesFalseNum)
                             elseif baElm == true && countChild == false
                                 foundOtherNodesNum += 1
                                 foundSameLevelChildrenNum += 1
@@ -180,32 +186,43 @@ function sequenceToLouds(sequence)
                         end
                         #+1分は同じ階層の終了分を表す　その右側searchElm[4]つ目が対象の子ノードのブロックの終了を示す0だが
                         #1個前の0から子供ノードをカウントしだすフラグを立てる
-                        if foundOtherNodesFalseNum == 1 + searchElm[4] - 1
+                        if foundOtherNodesFalseNum == 1 + searchElm[4] + searchElm[5]- 1
+                            println("countChild no bitaryIdx", bitAryIdx)
                             countChild = true
                         end
-                        if foundOtherNodesFalseNum == 1 + searchElm[4]
+                        if foundOtherNodesFalseNum == 1 + searchElm[4] + searchElm[5]
+                            println("found", foundOtherNodesFalseNum)
                             break
                         end
                     end
+                    println("koko3baIdx", bitAryIdx)
                     #ある場合
                     if targetChildrenNum > 0
+                        println("ossu", targetChildrenNum)
                     #子ノード達のラベルIdx取得
                         childrenLabelIdxes = searchElm[2] + foundOtherNodesNum + 1:searchElm[2] + foundOtherNodesNum + targetChildrenNum
                     #子ノード達の中で、今来ている値と同じ値のインデックスを取得  
                         matchChildLabelIdxInBrothers = findfirst(isequal(elm), [elmLabel[1] for elmLabel in label[childrenLabelIdxes]])
                     #一致したものがあれば
                         if matchChildLabelIdxInBrothers != nothing
-                            matchChildLabelIdx = matchChildLabelIdxInBrothers + searchElm[2] + foundOtherNodesNum + 1
+                            println("koko1")
+                            matchChildLabelIdx = matchChildLabelIdxInBrothers + searchElm[2] + foundOtherNodesNum
                             #既存のノードラベルにfoundMatchLabelIdxesを追加する　重複は除く TODO:重複になるケースがあるか不明
+                            println("nanikana", matchChildLabelIdx)
+                            println("nanikana2", label)
                             insert!(unique!(append!(label[matchChildLabelIdx][2:end], foundMatchLabelIdxes)), 1, label[matchChildLabelIdx][1])
-                            push!(tmpSearchTargetNode, [bitAryIdx - targetChildrenNum - 1 + matchChildLabelIdxInBrothers , matchChildLabelIdx, searchElm[3] + 1, foundSameLevelChildrenNum + 1])#ここむずい
+                            insert!(tmpSearchTargetNode, 1, [bitAryIdx - targetChildrenNum - 1 + matchChildLabelIdxInBrothers , matchChildLabelIdx, searchElm[3] + 1, foundSameLevelChildrenNum + 1, eachLevelNodesNumber[searchElm[3]] - searchElm[4]])#ここむずい
+                            println("kokonanda", tmpSearchTargetNode)
                         else
+                            println("koko2")
                             #なければ子ノードを追加する
                             insert!(bitAry, bitAryIdx, false)#ここはOK
                             push!(bitAry, false)#ここはOK
                             insert!(label, childrenLabelIdxes[end] + 1, insert!(foundMatchLabelIdxes, 1, elm))#ここはOK
                             #searchTargetに追加する
-                            push!(tmpSearchTargetNode, [bitAryIdx, childrenLabelIdxes[end] + 1, searchElm[3] + 1, foundSameLevelChildrenNum + 1])#ここはOK
+                            
+                            insert!(tmpSearchTargetNode, 1, [bitAryIdx, childrenLabelIdxes[end] + 1, searchElm[3] + 1, foundSameLevelChildrenNum + 1, eachLevelNodesNumber[searchElm[3]] - searchElm[4]])#ここはOK
+                            println("sonna_1", tmpSearchTargetNode)
                             if length(eachLevelNodesNumber) < searchElm[3] + 1
                                 push!(eachLevelNodesNumber, 1)
                             else
@@ -214,11 +231,15 @@ function sequenceToLouds(sequence)
                         end
                     else
                         #なければ子ノード追加
+                        println("koko3", bitAryIdx)
                         insert!(bitAry, bitAryIdx, true)
                         push!(bitAry, false)
-                        insert!(label, searchElm[2] + foundOtherNodesNum, insert!(foundMatchLabelIdxes, 1, elm))
+                        insert!(label, searchElm[2] + foundOtherNodesNum + 1, insert!(foundMatchLabelIdxes, 1, elm))
                         #searchTargetに追加する
-                        push!(tmpSearchTargetNode, [bitAryIdx, searchElm[2] + foundOtherNodesNum, searchElm[3] + 1, foundSameLevelChildrenNum + 1])#これはOK
+                        println("tabunzero", foundOtherNodesNum)
+                        insert!(tmpSearchTargetNode, 1, [bitAryIdx, searchElm[2] + foundOtherNodesNum + 1, searchElm[3] + 1, foundSameLevelChildrenNum + 1, eachLevelNodesNumber[searchElm[3]] - searchElm[4]])#これはOK
+                        println("sonna", tmpSearchTargetNode)
+                        println("sonna", bitAry)
                         if length(eachLevelNodesNumber) < searchElm[3] + 1
                             push!(eachLevelNodesNumber, 1)
                         else
@@ -240,8 +261,8 @@ function sequenceToLouds(sequence)
             if sameRootChildLabelIdx !== nothing
                 #一致したラベルに現在のシーケンスインデックスを追加
                 push!(label[sameRootChildLabelIdx], seqIdx)
-                #ターゲットノードの1の位置を[bitaryIdx, labelIdx, 階層の番号, 同じ階層のノードの中で左から何番目か]の配列で先頭に追加する
-                insert!(searchTargetNode, 1, [sameRootChildLabelIdx + 2, sameRootChildLabelIdx, 1, sameRootChildLabelIdx])
+                #ターゲットノードの1の位置を[bitaryIdx, labelIdx, 階層の番号, 同じ階層のノードの中で左から何番目か, ターゲットノードの親より右側にいるノードの数]の配列で先頭に追加する
+                push!(searchTargetNode, [sameRootChildLabelIdx + 2, sameRootChildLabelIdx, 1, sameRootChildLabelIdx, eachLevelNodesNumber[1] - sameRootChildLabelIdx])
             else
             #ルートノードの子にいない場合は追加
                 insert!(bitAry, 3, true)
@@ -258,6 +279,7 @@ function sequenceToLouds(sequence)
         end
         println("bitAry ", bitAry)
         println("label ", label)
+        println("searchTargetNode", searchTargetNode)
 
     end
     trieToPuml(bitAry, label)
