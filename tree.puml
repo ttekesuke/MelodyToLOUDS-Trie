@@ -14,27 +14,27 @@ object 4
 4 : value=1
 4 : seqIdx=[3, 5]
 object 5
-5 : value=1
-5 : seqIdx=[3, 5]
+5 : value=-1
+5 : seqIdx=[2, 4, 6]
 object 6
-6 : value=-1
-6 : seqIdx=[2, 4, 6]
+6 : value=1
+6 : seqIdx=[3, 5, 7]
 object 7
 7 : value=1
-7 : seqIdx=[3, 5, 7]
+7 : seqIdx=[3, 5]
 object 8
-8 : value=1
-8 : seqIdx=[3, 5, 7]
+8 : value=-1
+8 : seqIdx=[4, 6]
 object 9
-9 : value=1
-9 : seqIdx=[3, 5, 7]
+9 : value=-1
+9 : seqIdx=[4, 6]
 0--1
 0--2
-2--3
-4--4
-5--5
-6--6
+1--3
+2--4
+4--5
+7--6
 8--7
-10--8
+11--8
 12--9
 @enduml
