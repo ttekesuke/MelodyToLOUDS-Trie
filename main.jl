@@ -135,6 +135,7 @@ function sequenceToLouds(sequence)
                 if length(foundMatchLabelIdxes) > 0
                     #foundMatchLabelIdxesには現在のelmも追加する。その配列をラベルに追加するため。
                     push!(foundMatchLabelIdxes, seqIdx)
+                    println("saiogyane", foundMatchLabelIdxes)
                     #labelとbitAryを更新する。
                     #子ノードが存在していればラベルにシーケンスインデックスを追加する
                     #子ノードがなければ子ノードを追加する
@@ -154,6 +155,7 @@ function sequenceToLouds(sequence)
                     #ターゲットノードの子ノードを数えだすフラグ
                     countChild = false
                     for baElm in bitAry[searchElm[1] + 1:end]
+            println("koi", bitAryIdx, "h",searchElm[4], "h", eachLevelNodesNumber)
                         #同じ階層内の一番右端のノードを見ている場合、即座にcountFalseを開始する
                         if eachLevelNodesNumber[searchElm[3]] - searchElm[4] == 0
                             countFalse = true
@@ -210,7 +212,8 @@ function sequenceToLouds(sequence)
                             #既存のノードラベルにfoundMatchLabelIdxesを追加する　重複は除く TODO:重複になるケースがあるか不明
                             println("nanikana", matchChildLabelIdx)
                             println("nanikana2", label)
-                            insert!(unique!(append!(label[matchChildLabelIdx][2:end], foundMatchLabelIdxes)), 1, label[matchChildLabelIdx][1])
+                            println("nanikana3", foundMatchLabelIdxes)
+                           label[matchChildLabelIdx] = insert!(unique!(append!(label[matchChildLabelIdx][2:end], foundMatchLabelIdxes)), 1, label[matchChildLabelIdx][1])
                             push!(tmpSearchTargetNode, [bitAryIdx - targetChildrenNum - 1 + matchChildLabelIdxInBrothers , matchChildLabelIdx, searchElm[3] + 1, foundSameLevelChildrenNum + 1, eachLevelNodesNumber[searchElm[3]] - searchElm[4]])#ここむずい
                             println("kokonanda", tmpSearchTargetNode)
                         else
@@ -225,7 +228,7 @@ function sequenceToLouds(sequence)
                                     if searchTargetNode[1] > bitAryIdx
                                         searchTargetNode[1] += 1
                                         searchTargetNode[2] += 1
-                                        if searchTargetNode[4] == searchElm[3]
+                                        if searchTargetNode[3] == searchElm[3]
                                             searchTargetNode[4] += 1
                                         end
                                     end
@@ -237,8 +240,9 @@ function sequenceToLouds(sequence)
                             if length(eachLevelNodesNumber) < searchElm[3] + 1
                                 push!(eachLevelNodesNumber, 1)
                             else
-                                eachLevelNodesNumber[searchElm[3]] += 1
+                                eachLevelNodesNumber[searchElm[3] + 1] += 1
                             end
+                            print("waraeyo1", eachLevelNodesNumber)
                         end
                     else
                         #なければ子ノード追加
@@ -252,22 +256,23 @@ function sequenceToLouds(sequence)
                                 if searchTargetNode[1] > bitAryIdx
                                     searchTargetNode[1] += 1
                                     searchTargetNode[2] += 1
-                                    if searchTargetNode[4] == searchElm[3]
+                                    if searchTargetNode[3] == searchElm[3]
                                         searchTargetNode[4] += 1
                                     end
                                 end
                             end
                         end
                         #searchTargetに追加する
-                        println("tabunzero", foundOtherNodesNum)
+                        println("tabunzero", eachLevelNodesNumber)
                         push!(tmpSearchTargetNode, [bitAryIdx, searchElm[2] + foundOtherNodesNum + 1, searchElm[3] + 1, foundSameLevelChildrenNum + 1, eachLevelNodesNumber[searchElm[3]] - searchElm[4]])
                         println("sonna", tmpSearchTargetNode)
                         println("sonna", bitAry)
                         if length(eachLevelNodesNumber) < searchElm[3] + 1
                             push!(eachLevelNodesNumber, 1)
                         else
-                            eachLevelNodesNumber[searchElm[3]] += 1
+                            eachLevelNodesNumber[searchElm[3] + 1] += 1
                         end
+                        print("waraeyo2", eachLevelNodesNumber)
                     end
                 end
             end

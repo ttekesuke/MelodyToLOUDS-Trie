@@ -20,3 +20,6 @@ trie.calcDtwDistances(sequences)
 trie.plotMelody(sequences)
 
 
+ary1 = [2, 4]
+ary2 = [2, 4, 6]
+insert!(unique!(append!(ary1, ary2)), 1 ,-1)
