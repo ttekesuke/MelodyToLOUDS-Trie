@@ -155,7 +155,7 @@ function sequenceToLouds(sequence)
                     #ターゲットノードの子ノードを数えだすフラグ
                     countChild = false
                     for baElm in bitAry[searchElm[1] + 1:end]
-            println("koi", bitAryIdx, "h",searchElm[4], "h", eachLevelNodesNumber)
+                        println("koi", bitAryIdx, "h", searchElm[4], "h", eachLevelNodesNumber)
                         #同じ階層内の一番右端のノードを見ている場合、即座にcountFalseを開始する
                         if eachLevelNodesNumber[searchElm[3]] - searchElm[4] == 0
                             countFalse = true
@@ -188,11 +188,15 @@ function sequenceToLouds(sequence)
                         end
                         #+1分は同じ階層の終了分を表す　その右側searchElm[4]つ目が対象の子ノードのブロックの終了を示す0だが
                         #1個前の0から子供ノードをカウントしだすフラグを立てる
-                        if foundOtherNodesFalseNum == 1 + searchElm[4] + searchElm[5] - 1
+                        parentNodeLevel = searchElm[3] - 1
+                        if parentNodeLevel == 0
+                            parentNodeLevel = 1
+                        end
+                        if foundOtherNodesFalseNum == 1 + searchElm[4] + eachLevelNodesNumber[parentNodeLevel] - searchElm[5] - 1
                             println("countChild no bitaryIdx", bitAryIdx)
                             countChild = true
                         end
-                        if foundOtherNodesFalseNum == 1 + searchElm[4] + searchElm[5]
+                        if foundOtherNodesFalseNum == 1 + searchElm[4] + eachLevelNodesNumber[parentNodeLevel] - searchElm[5]
                             println("found", foundOtherNodesFalseNum)
                             break
                         end
@@ -213,8 +217,8 @@ function sequenceToLouds(sequence)
                             println("nanikana", matchChildLabelIdx)
                             println("nanikana2", label)
                             println("nanikana3", foundMatchLabelIdxes)
-                           label[matchChildLabelIdx] = insert!(unique!(append!(label[matchChildLabelIdx][2:end], foundMatchLabelIdxes)), 1, label[matchChildLabelIdx][1])
-                            push!(tmpSearchTargetNode, [bitAryIdx - targetChildrenNum - 1 + matchChildLabelIdxInBrothers , matchChildLabelIdx, searchElm[3] + 1, foundSameLevelChildrenNum + 1, eachLevelNodesNumber[searchElm[3]] - searchElm[4]])#ここむずい
+                            label[matchChildLabelIdx] = insert!(unique!(append!(label[matchChildLabelIdx][2:end], foundMatchLabelIdxes)), 1, label[matchChildLabelIdx][1])
+                            push!(tmpSearchTargetNode, [bitAryIdx - targetChildrenNum - 1 + matchChildLabelIdxInBrothers , matchChildLabelIdx, searchElm[3] + 1, foundSameLevelChildrenNum + 1, searchElm[4]])#ここむずい
                             println("kokonanda", tmpSearchTargetNode)
                         else
                             println("koko2")
@@ -231,11 +235,15 @@ function sequenceToLouds(sequence)
                                         if searchTargetNode[3] == searchElm[3]
                                             searchTargetNode[4] += 1
                                         end
+                                        #既存の調査対象ノードの親ノードが、今ターゲットに追加するノードと同じ階層で、かつ既存の調査対象ノードの親ノードが今ターゲットに追加するノードの右側にあれば、既存のやつを1追加する
+                                        if searchTargetNode[3] - 1 == searchElm[3] + 1 && searchTargetNode[5] > foundSameLevelChildrenNum + 1
+                                            searchTargetNode[5] += 1
+                                        end
                                     end
                                 end
                             end
                             #searchTargetに追加する
-                            push!(tmpSearchTargetNode, [bitAryIdx, childrenLabelIdxes[end] + 1, searchElm[3] + 1, foundSameLevelChildrenNum + 1, eachLevelNodesNumber[searchElm[3]] - searchElm[4]])#ここはOK
+                            push!(tmpSearchTargetNode, [bitAryIdx, childrenLabelIdxes[end] + 1, searchElm[3] + 1, foundSameLevelChildrenNum + 1, searchElm[4]])#ここはOK
                             println("sonna_1", tmpSearchTargetNode)
                             if length(eachLevelNodesNumber) < searchElm[3] + 1
                                 push!(eachLevelNodesNumber, 1)
@@ -259,12 +267,16 @@ function sequenceToLouds(sequence)
                                     if searchTargetNode[3] == searchElm[3]
                                         searchTargetNode[4] += 1
                                     end
+                                    #既存の調査対象ノードの親ノードが、今ターゲットに追加するノードと同じ階層で、かつ既存の調査対象ノードの親ノードが今ターゲットに追加するノードの右側にあれば、既存のやつを1追加する
+                                    if searchTargetNode[3] - 1 == searchElm[3] + 1 && searchTargetNode[5] > foundSameLevelChildrenNum + 1
+                                        searchTargetNode[5] += 1
+                                    end                                    
                                 end
                             end
                         end
                         #searchTargetに追加する
                         println("tabunzero", eachLevelNodesNumber)
-                        push!(tmpSearchTargetNode, [bitAryIdx, searchElm[2] + foundOtherNodesNum + 1, searchElm[3] + 1, foundSameLevelChildrenNum + 1, eachLevelNodesNumber[searchElm[3]] - searchElm[4]])
+                        push!(tmpSearchTargetNode, [bitAryIdx, searchElm[2] + foundOtherNodesNum + 1, searchElm[3] + 1, foundSameLevelChildrenNum + 1, searchElm[4]])
                         println("sonna", tmpSearchTargetNode)
                         println("sonna", bitAry)
                         if length(eachLevelNodesNumber) < searchElm[3] + 1
@@ -289,8 +301,8 @@ function sequenceToLouds(sequence)
             if sameRootChildLabelIdx !== nothing
                 #一致したラベルに現在のシーケンスインデックスを追加
                 push!(label[sameRootChildLabelIdx], seqIdx)
-                #ターゲットノードの1の位置を[bitaryIdx, labelIdx, 階層の番号, 同じ階層のノードの中で左から何番目か, ターゲットノードの親より右側にいるノードの数]の配列で先頭に追加する
-                push!(searchTargetNode, [sameRootChildLabelIdx + 2, sameRootChildLabelIdx, 1, sameRootChildLabelIdx, 0])
+                #ターゲットノードの1の位置を[bitaryIdx, labelIdx, 階層の番号, 同じ階層のノードの中で左から何番目か, ターゲットノードの親ノードは同じ階層で左から何番目か]の配列で先頭に追加する
+                push!(searchTargetNode, [sameRootChildLabelIdx + 2, sameRootChildLabelIdx, 1, sameRootChildLabelIdx, 1])
             else
             #ルートノードの子にいない場合は追加
                 insert!(bitAry, 3, true)
