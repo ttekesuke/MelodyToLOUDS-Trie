@@ -2,7 +2,8 @@ include("main.jl")
 # using ASTInterpreter2
 
 ############## trie木を作る ##############
-pitchSequence =rand(1:10,50)
+# pitchSequence =rand(1:10,50)
+pitchSequence = repeat([1,2,3], 6)
 differenceSequence = trie.seqenceToDifferenceSequence(pitchSequence)
 binarySequence = trie.sequenceToBinarySequence(differenceSequence)
 @time trie.sequenceToLouds(binarySequence)
