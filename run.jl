@@ -3,7 +3,7 @@ include("main.jl")
 
 ############## trie木を作る ##############
 # pitchSequence =rand(1:10,50)
-pitchSequence = repeat([1,2,3], 6)
+pitchSequence = [1,2,3,1,2,3,1,2,3]
 differenceSequence = trie.seqenceToDifferenceSequence(pitchSequence)
 binarySequence = trie.sequenceToBinarySequence(differenceSequence)
 @time trie.sequenceToLouds(binarySequence)
@@ -25,3 +25,24 @@ sequences = [
 trie.calcDtwDistances(sequences)
 ############## メロディを表示する ##############
 trie.plotMelody(sequences)
+
+
+
+ary = [false, false, true, false, true, true]
+count(iszero, ary[4:end])
+
+y = rand(1:10, 20)
+u = unique(y)
+d = Dict([(i, count(x->x == i, y)) for i in u])
+println("count for 10 is $(d[10])")
+
+
+function foo(a,b)
+    a+b, a*b
+end
+
+c = foo(3,2)[1]
+
+c[1]
+
+1 + nothing

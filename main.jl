@@ -96,281 +96,252 @@ end
 #シーケンスを独自ルールでLOUDSのTrie木構造に変換して返却する　まだできてない
 function sequenceToLouds(sequence)
     #トライ木をLOUDSで表現するためのビット配列　初期値として1番ノードを指すtと、
-    #0番ノードの子ノードの終端を指すfと、
-    #1番ノードの子ノードの終端を指すfが入ってる
+    #ルートノードのの終端を指すfと、
+    #1番ノードの終端を指すfが入ってる
     bitAry = BitArray([true,false,false])
     #各ノードに対応するラベル　形式は[sequenceの要素, その要素が出現したインデックス1, その要素が出現したインデックス2,...]
     label = []
-    #検索対象となるノードの情報。[[bitAry上のインデックス, label上のインデックス, 同じ世代のノードの中で左から何番目か], ...]。そのノードの子ノードを検索する。
-    searchTargetNode = []
+    #検索対象となるノードの情報。[何階層目か, その階層の中で左から何番目のノードか、bitIdx]
+    searchTargetNodes = []
     #シーケンス番号
     seqIdx = 0
-    #検索対象ノードの子ノードの数
-    childrenNumber = 0
-    #ルートノードの子ノードの数
-    rootChildrenNumber = 0
-    #各層のノードの数をカウントしていく ルートも記載あり
-    eachLevelNodesNumber = [1]
 
+    #各階層のノード数　ルート直下からスタート
+    eachLevelNodesAccumulatedNumber = []
+
+    #各階層のbitAry上の区切り位置
+    levelBoundaryBaIdx = [3]
 
     for elm in sequence
         seqIdx = seqIdx + 1
-        println("---------------seqIdx",seqIdx, "---------------")
+        println("---------------seqIdx", seqIdx, "---------------")
         
         
-        #過去のシーケンスを検索開始　検索対象となるノードがあれば
-        if length(searchTargetNode) > 0
-            
-            #初期化
-            tmpSearchTargetNode = []
-            #検索対象のノードのbitAry上のインデック
-            for searchElm in searchTargetNode
-                println("searchElm", searchElm)
+        #検索対象となるノードがあれば過去のシーケンスを検索開始
+        if length(searchTargetNodes) > 0
+            tmpSearchTargetNodes = []
+            for searchTargetNode in searchTargetNodes
+                println("searchTargetNode", searchTargetNode)
                 
+                #検索対象となるノードが持つsequence上のインデックスを取得。
+                #ラベルから取得するが、現在のseqIdx　- 1 と同じ値の要素は取得しない　あくまで過去の要素が対象
+                searchTargetSeqIdxes = filter!(e->e ≠ seqIdx - 1, label[searchTargetNode[2]][2:end])
                 
+                #ラベルから取得した過去のsequence上のインデックスの右隣が検索対象
+                searchTargetChildrenSeqIdxes = searchTargetSeqIdxes + repeat([1], length(searchTargetSeqIdxes))
                 
-                #調査対象のsequence上のインデックスを取得。
-                #ラベルから取得するが、現在のseqIdx　- 1 と同じ値の要素は取得しない
-                #あくまで過去の要素が対象
-                searchTargetSeqIdxes = filter!(e->e ≠ seqIdx - 1, label[searchElm[2]][2:end])
-                
-
-                #調査対象のラベルのseqIdxの一つ右隣の中で、要素と一致しているラベルインデックスを取得
-                searchTargetChildrenIdxes = searchTargetSeqIdxes + repeat([1], length(searchTargetSeqIdxes))
-                
-                
-                foundMatchLabelIdxes = searchTargetChildrenIdxes[findall(isequal(elm), [sequence[i] for i in searchTargetChildrenIdxes])]
-                #あれば
+                #シーケンス上に、今来ているelmと一致したインデックスを取得
+                foundMatchLabelIdxes = searchTargetChildrenSeqIdxes[findall(isequal(elm), [sequence[i] for i in searchTargetChildrenSeqIdxes])]
+                #1つでも一致したシーケンスがあれば、bitAryとlabelを更新する必要がある
                 if length(foundMatchLabelIdxes) > 0
+                    println("foundMatchLabelIdxes", foundMatchLabelIdxes)
                     
-                    #foundMatchLabelIdxesには現在のelmも追加する。その配列をラベルに追加するため。
+                    #foundMatchLabelIdxesに現在のseqIdxも追加する。その配列をラベルに追加するため。
                     push!(foundMatchLabelIdxes, seqIdx)
+                    println("bitAry", bitAry)
+
+                    #子ノードの情報（子ノードの数、子ノードと同じ階層の上の従兄弟の数、子ノードの終端のfalseのbitIdx）を取得する
+                    bitIdx, childrenNumber, brotherChildrenNumber = getChildIdx(levelBoundaryBaIdx, searchTargetNode, bitAry)
+                    println("bitIdx", bitIdx)
+                    println("searchTargetNode", searchTargetNode)
+                    println("brotherChildrenNumber", brotherChildrenNumber)
+                    println("eachLevelNodesAccumulatedNumber", eachLevelNodesAccumulatedNumber)
+                    println("childrenNumber", childrenNumber)
                     
-                    #labelとbitAryを更新する。
-                    #子ノードが存在していればラベルにシーケンスインデックスを追加する
-                    #子ノードがなければ子ノードを追加する
-                    #bitAryに追加する位置を決める 
-                    #カウンター　初期値は渡されたターゲットノードのインデックス
-                    bitAryIdx = searchElm[1]
-                    #探索時に見つかった、関係ないノードの終端を示す0の数     
-                    foundOtherNodesFalseNum = 0
-                    #探索時に見つかった、関係ないノードの数
-                    foundOtherNodesNum = 0
-                    #ターゲットノードの子ノードの数
-                    targetChildrenNum = 0
-                    #ターゲットノードの子ノードの階層にいるノードの数
-                    foundSameLevelChildrenNum = 0
-                    #ターゲットノードの兄弟を数え上げた後に各ブロックの数を数えだすフラグ
-                    countFalse = false
-                    #ターゲットノードの子ノードを数えだすフラグ
-                    countChild = false
+                    #子ノードの開始位置の一つ前のidxを取得する
+                    childLabelStartIdx = eachLevelNodesAccumulatedNumber[searchTargetNode[1]] + brotherChildrenNumber
+                    #子ノードが存在していたら
+                    if childrenNumber > 0
+                        println("childrenNumber", childrenNumber)
+                        #子ノードのラベルインデックスを取得
+                        childrenLabelIdxes = childLabelStartIdx + 1:childLabelStartIdx + childrenNumber
+                        println("childrenLabelIdxes", childrenLabelIdxes)
+                        #子ノードの中で一致したノードのラベルインデックスを取得
+                        matchChildLabelIdx = findfirst(isequal(elm), [elmLabel[1] for elmLabel in label[childrenLabelIdxes]])
+                        #一致したノードがあれば
+                        if matchChildLabelIdx != nothing
+                            #既存のノードラベルにfoundMatchLabelIdxesを追加する
+                            childLabelStartIdx += matchChildLabelIdx
+                            label[matchChildLabelIdx] = insert!(unique!(sort(append!(label[matchChildLabelIdx][2:end], foundMatchLabelIdxes))), 1label[matchChildLabelIdx[1]])
 
-                    matchChildLabelIdxInBrothers = 0
+                            push!(tmpSearchTargetNodes, [searchTargetNode[1] + 1, brotherChildrenNumber + matchChildLabelIdx, bitIdx - childrenNumber - 1 + matchChildLabelIdx])
 
-                    if eachLevelNodesNumber[searchElm[3]-1] - searchElm[5] == 0 && searchElm[3] != 2 || eachLevelNodesNumber[searchElm[3]] - searchElm[4] == 0 && searchElm[3] == 2
-                        countFalse = true
-                        println("itu", bitAryIdx)
-                    end
-                    for baElm in bitAry[searchElm[1] + 1:end]
-                        
-                        #ターゲットノードの親ノードがルートでかつターゲットノードと同じ階層の右端の場合
-                        #またはターゲットノードの親ノードがルートでなくかつ親ノードに↑の兄弟がいない場合、
-                        #即座にcountFalseを開始する
-                        
-                        
 
-                        #次の値から検索開始
-                        bitAryIdx += 1
-                        if countFalse == true
-                            if baElm == false
-                                foundOtherNodesFalseNum += 1
-                                
-                            elseif baElm == true && countChild == false
-                                foundOtherNodesNum += 1
-                                foundSameLevelChildrenNum += 1
-                            end
+                        #一致したノードがなければノード追加
                         else
-                            if baElm == true
-                                foundOtherNodesNum += 1
+                            #子ノード追加
+                            insert!(bitAry, bitIdx, true)
+                            #searchTargetNodeを追加する
+                            push!(tmpSearchTargetNodes, [searchTargetNode[1] + 1, brotherChildrenNumber + childrenNumber + 1, bitIdx])
+                            #各階層のノード数更新
+                            broadcast(+, eachLevelNodesAccumulatedNumber[searchTargetNode[1] + 1:end], 1)
+                            if searchTargetNode[1] + 1 > length(eachLevelNodesAccumulatedNumber)
+                                push!(eachLevelNodesAccumulatedNumber, eachLevelNodesAccumulatedNumber[end] + 1)
                             end
-                        end
-                        if countChild == true
-                            if baElm == true
-                                targetChildrenNum += 1
+                            
+                            #各階層のbitAry上の区切り位置更新
+                            broadcast(+, levelBoundaryBaIdx[searchTargetNode[1] + 2:end], 1)
+                            if searchTargetNode[1] + 1 > length(levelBoundaryBaIdx)
+                                push!(levelBoundaryBaIdx, bitIdx)
                             end
-                        end
-                        #ターゲットノードの右隣の1の数が、同じ階層のノードの数-左から何番目かの値になれば
-                        #同じ階層のノードを数え終わったことになるので、今度はfalseを数え出す
-                        
-                        if foundOtherNodesNum == eachLevelNodesNumber[searchElm[3]] - searchElm[4]
-                            countFalse = true
-                           
-                        end
-                        #+1分は同じ階層の終了分を表す　その右側searchElm[4]つ目が対象の子ノードのブロックの終了を示す0だが
-                        #1個前の0から子供ノードをカウントしだすフラグを立てる
-                        parentNodeLevel = searchElm[3] - 1
-                        if parentNodeLevel == 0
-                            parentNodeLevel = 1
-                        end
-                        
-                        
-                        if foundOtherNodesFalseNum == 1 + searchElm[4] - 1
-                            
-                            countChild = true
-                            println("dou", bitAryIdx)
-                            
-                        end
-                        if foundOtherNodesFalseNum == 1 + searchElm[4]
-                            
-                            break
-                        end
-                    end
-                    
-                    
-                    #ある場合
-                    if targetChildrenNum > 0
-                        
-                        
-                    #子ノード達のラベルIdx取得
-                        childrenLabelIdxes = searchElm[2] + foundOtherNodesNum + 1:searchElm[2] + foundOtherNodesNum + targetChildrenNum
-                    #子ノード達の中で、今来ている値と同じ値のインデックスを取得  
-                        matchChildLabelIdxInBrothers = findfirst(isequal(elm), [elmLabel[1] for elmLabel in label[childrenLabelIdxes]])
-                    
-                    #一致したものがあれば
-                        if matchChildLabelIdxInBrothers != nothing
-                            
-                            matchChildLabelIdx = matchChildLabelIdxInBrothers + searchElm[2] + foundOtherNodesNum
-                            #既存のノードラベルにfoundMatchLabelIdxesを追加する　重複は除く TODO:重複になるケースがあるか不明
-                            
-                           
-                            label[matchChildLabelIdx] = insert!(unique!(sort(append!(label[matchChildLabelIdx][2:end], foundMatchLabelIdxes))), 1, label[matchChildLabelIdx][1])
-                            
-                            push!(tmpSearchTargetNode, [bitAryIdx - targetChildrenNum - 1 + matchChildLabelIdxInBrothers , matchChildLabelIdx, searchElm[3] + 1, foundSameLevelChildrenNum + 1, searchElm[4]])#ここむずい
-                            
-                        else
-                            
-                            #なければ子ノードを追加する
-                            
-                            insert!(bitAry, bitAryIdx, true)
-
-                            # push!(bitAry, false)
-                            #TODO:falseをつっこむ箇所を修正必要
-           
+                            #追加したノードに対応するfalseを追加
+                            insert!(bitAry, getChildIdx(levelBoundaryBaIdx, [searchTargetNode[1] + 1, brotherChildrenNumber + 1], bitAry)[1], false)
+                            #labelに追加
                             insert!(label, childrenLabelIdxes[end] + 1, insert!(foundMatchLabelIdxes, 1, elm))
-                            #searchTargetに追加する前に、searchTargetに既に追加されているものがあれば、それらのうちbitAryに関するものを更新する。
-                            if length(tmpSearchTargetNode) > 0
-                                for searchTargetNode in tmpSearchTargetNode
-                                    if searchTargetNode[1] > bitAryIdx
-                                        searchTargetNode[1] += 1
-                                        searchTargetNode[2] += 1
-                                        if searchTargetNode[3] == searchElm[3]
-                                            searchTargetNode[4] += 1
-                                        end
-                                        #既存の調査対象ノードの親ノードが、今ターゲットに追加するノードと同じ階層で、かつ既存の調査対象ノードの親ノードが今ターゲットに追加するノードの右側にあれば、既存のやつを1追加する
-                                        if searchTargetNode[3] - 1 == searchElm[3] + 1 && searchTargetNode[5] > foundSameLevelChildrenNum + 1
-                                            searchTargetNode[5] += 1
+
+                            #既に登録されているsearchTargetNodesを更新
+                            if length(tmpSearchTargetNodes) > 0
+                                for pastSearchTargetNode in tmpSearchTargetNodes
+                                    #今回追加したbitIdxより後ろのbitIdxの場合、1つ右にずらす
+                                    if bitIdx < pastSearchTargetNode[3]
+                                        pastSearchTargetNode[3] += 1     
+                                        #さらに同じ階層の場合、ノードの左からの順番も1つ右にずらす
+                                        if searchTargetNode[1] == pastSearchTargetNode[1]
+                                            pastSearchTargetNode[1] += 1
                                         end
                                     end
                                 end
                             end
-                            #searchTargetに追加する
-                            push!(tmpSearchTargetNode, [bitAryIdx, childrenLabelIdxes[end] + 1, searchElm[3] + 1, foundSameLevelChildrenNum + 1, searchElm[4]])
-                            
-                            if length(eachLevelNodesNumber) < searchElm[3] + 1
-                                push!(eachLevelNodesNumber, 1)
-                            else
-                                eachLevelNodesNumber[searchElm[3] + 1] += 1
-                            end
-                            
-     
                         end
+                    
+                    #子ノードが存在していなければ子ノードを追加する
                     else
-                        #なければ子ノード追加
-                        
-                        insert!(bitAry, bitAryIdx, true)
+                        #子ノード追加
+                        insert!(bitAry, bitIdx, true)
+                        println("ssss", bitAry)
+                        #各階層のノード数更新 
+                        #長さが
+                        if eachLevelNodesAccumulatedNumber > 
+
+                        end
+                        #子ノードの位置以降を追加
+                        broadcast(+, eachLevelNodesAccumulatedNumber[searchTargetNode[1] + 1:end], 1)
+                        # if searchTargetNode[1] + 1 > length(eachLevelNodesAccumulatedNumber)
+                        #     push!(eachLevelNodesAccumulatedNumber, eachLevelNodesAccumulatedNumber[end] + 1)
+                        # end
+                        if length(levelBoundaryBaIdx) < searchTargetNode[1] + 2
+                            push!(levelBoundaryBaIdx, )
+                        end
+                        #各階層のbitAry上の区切り位置更新
+                        broadcast(+, levelBoundaryBaIdx[searchTargetNode[1] + 2:end], 1)
 
                         
-                        # push!(bitAry, false)
-                        #TODO:falseをつっこむ箇所を修正必要
+                        # if searchTargetNode[1] + 1 > length(levelBoundaryBaIdx)
+                                                    
+                        #     push!(levelBoundaryBaIdx, bitIdx)
+                        #     println("koko", eachLevelNodesAccumulatedNumber)
+                        # end
+                        #追加したノードに対応するfalseを追加
+                        insert!(bitAry, getChildIdx(levelBoundaryBaIdx, [searchTargetNode[1] + 1, brotherChildrenNumber + 1], bitAry)[1], false)
+                        #labelに追加
+                        insert!(label, childLabelStartIdx + 1, insert!(foundMatchLabelIdxes, 1, elm))
 
-                        insert!(label, searchElm[2] + foundOtherNodesNum + 1, insert!(foundMatchLabelIdxes, 1, elm))
-                        #searchTargetに追加する前に、searchTargetに既に追加されているものがあれば、それらのうちbitAryに関するものを更新する。
-                        if length(tmpSearchTargetNode) > 0
-                            for searchTargetNode in tmpSearchTargetNode
-                                if searchTargetNode[1] > bitAryIdx
-                                    searchTargetNode[1] += 1
-                                    searchTargetNode[2] += 1
-                                    if searchTargetNode[3] == searchElm[3]
-                                        searchTargetNode[4] += 1
+                        #既に登録されているsearchTargetNodesを更新
+                        if length(tmpSearchTargetNodes) > 0
+                            for pastSearchTargetNode in tmpSearchTargetNodes
+                                #今回追加したbitIdxより後ろのbitIdxの場合、1つ右にずらす
+                                if bitIdx < pastSearchTargetNode[3]
+                                    pastSearchTargetNode[3] += 1     
+                                    #さらに同じ階層の場合、ノードの左からの順番も1つ右にずらす
+                                    if searchTargetNode[1] == pastSearchTargetNode[1]
+                                        pastSearchTargetNode[1] += 1
                                     end
-                                    #既存の調査対象ノードの親ノードが、今ターゲットに追加するノードと同じ階層で、かつ既存の調査対象ノードの親ノードが今ターゲットに追加するノードの右側にあれば、既存のやつを1追加する
-                                    if searchTargetNode[3] - 1 == searchElm[3] + 1 && searchTargetNode[5] > foundSameLevelChildrenNum + 1
-                                        searchTargetNode[5] += 1
-                                    end                                    
                                 end
                             end
                         end
-                        #searchTargetに追加する
-                        println("sou", bitAry)
-                        println("soudesuka", label)
-                        
-                        push!(tmpSearchTargetNode, [bitAryIdx, searchElm[2] + foundOtherNodesNum + 1, searchElm[3] + 1, foundSameLevelChildrenNum + 1, searchElm[4]])
-                        
-                        
-                        if length(eachLevelNodesNumber) < searchElm[3] + 1
-                            push!(eachLevelNodesNumber, 1)
-                        else
-                            eachLevelNodesNumber[searchElm[3] + 1] += 1
-                        end
-                        
+
+                        #searchTargetNodeを追加する。
+                        push!(tmpSearchTargetNodes, [searchTargetNode[1] + 1, brotherChildrenNumber + 1, bitIdx])
+
                     end
+
                 end
             end
             #次回の検索用配列にコピー
-            searchTargetNode = tmpSearchTargetNode
+            searchTargetNodes = tmpSearchTargetNodes
         end
         #ルートの子ノードに追加する
         #子供があれば
-        if length(eachLevelNodesNumber) > 1
+        if length(eachLevelNodesAccumulatedNumber) > 0
             #同じ要素が子ノードにあるか検索
-            sameRootChildLabelIdx = findfirst(isequal(elm), [labelElm[1] for labelElm in label[1:eachLevelNodesNumber[2]]])
-            
+            matchRootChildLabelIdx = findfirst(isequal(elm), [labelElm[1] for labelElm in label[1:eachLevelNodesAccumulatedNumber[1]]])
+
             #あれば
-            if sameRootChildLabelIdx !== nothing
+            if matchRootChildLabelIdx !== nothing
                 #一致したラベルに現在のシーケンスインデックスを追加
-                push!(label[sameRootChildLabelIdx], seqIdx)
-                #ターゲットノードの1の位置を[bitaryIdx, labelIdx, 階層の番号, 同じ階層のノードの中で左から何番目か, ターゲットノードの親ノードは同じ階層で左から何番目か]の配列で先頭に追加する
-                push!(searchTargetNode, [sameRootChildLabelIdx + 2, sameRootChildLabelIdx, 2, sameRootChildLabelIdx, 1])
+                push!(label[matchRootChildLabelIdx], seqIdx)
+                #ターゲットノードとして追加
+                push!(searchTargetNodes, [1, matchRootChildLabelIdx, 2 + matchRootChildLabelIdx])
             else
             #ルートノードの子にいない場合は追加
-
-            insert!(bitAry, 3, true)
-                push!(bitAry, false)
-
-                insert!(label,  eachLevelNodesNumber[2] + 1, [elm, seqIdx])
-                eachLevelNodesNumber[2] += 1
+                insert!(bitAry, 2 + eachLevelNodesAccumulatedNumber[1] + 1, true)
+                insert!(bitAry, getChildIdx(levelBoundaryBaIdx, [1, eachLevelNodesAccumulatedNumber[1] + 1], bitAry)[1], false)
+                insert!(label,  eachLevelNodesAccumulatedNumber[1] + 1, [elm, seqIdx])
+                broadcast(+, eachLevelNodesAccumulatedNumber, 1)
+                broadcast(+, levelBoundaryBaIdx[2:end], 1)
+                
+                push!(levelBoundaryBaIdx, 2 + eachLevelNodesAccumulatedNumber[1] + 2)
             end
         #なければ追加
         else
             insert!(bitAry, 3, true)
-
             push!(bitAry, false)
-
             insert!(label, 1, [elm, seqIdx])
-            push!(eachLevelNodesNumber, 1)
+            push!(eachLevelNodesAccumulatedNumber, 1)
+            push!(levelBoundaryBaIdx, 5)
         end
-        
-        
-        
-
-
-println("finalbitary",bitAry)
-println("finaleachlevel", eachLevelNodesNumber)
-println("finalsearchtarget", searchTargetNode)
-println("finalLabel", label)
+        println("finalbitary", bitAry)
+        println("finaleachlevel", eachLevelNodesAccumulatedNumber)
+        println("finalBoundary", levelBoundaryBaIdx)
+        println("finalsearchtarget", searchTargetNodes)
+        println("finalLabel", label)
     end
     trieToPuml(bitAry, label)
 end
+
+
+
+function getChildIdx(levelBoundaryBaIdx, searchTargetNode, bitAry)
+    println("ppp", levelBoundaryBaIdx)
+    println("pppp", searchTargetNode)
+    brotherNumber = 0
+    countChildren = false
+    childrenNumber = 0
+    brotherChildrenNumber = 0
+    #調査対象ノードが長男の場合、直下の階層の最初が調査対象ノードの子ノードになるので子ノードとして数えだす
+    if searchTargetNode[2] == 1
+        countChildren = true
+    end
+    bitIdx = levelBoundaryBaIdx[searchTargetNode[1] + 1] - 1
+    for bit in bitAry[bitIdx:end]
+        bitIdx += 1
+
+        if countChildren == true 
+            if bit == true
+                childrenNumber += 1
+            else
+                brotherNumber += 1
+            end
+        else
+            if bit == false
+                brotherNumber += 1
+            else
+                brotherChildrenNumber += 1
+            end
+        end
+        if brotherNumber == searchTargetNode[2] - 1
+            countChildren = true
+        end
+        if brotherNumber == searchTargetNode[2]
+            break
+        end                        
+    end
+    println("aaa", bitIdx),
+    println("bbb", childrenNumber)
+    println("ccc", brotherChildrenNumber)
+    return bitIdx, childrenNumber, brotherChildrenNumber
+end
+
 
 function trieToPuml(bitAry, label)
     open("tree.puml", "w") do file
