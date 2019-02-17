@@ -2,8 +2,7 @@ include("main.jl")
 # using ASTInterpreter2
 
 ############## trie木を作る ##############
-# pitchSequence =rand(1:10,50)
-pitchSequence = [1,5,3,5,1, 5,3]
+pitchSequence =rand(1:10,1000)
 differenceSequence = trie.seqenceToDifferenceSequence(pitchSequence)
 binarySequence = trie.sequenceToBinarySequence(differenceSequence)
 @time trie.sequenceToLouds(binarySequence)
@@ -25,24 +24,3 @@ sequences = [
 trie.calcDtwDistances(sequences)
 ############## メロディを表示する ##############
 trie.plotMelody(sequences)
-
-
-
-ary = [false, false, true, false, true, true]
-count(iszero, ary[4:end])
-
-y = rand(1:10, 20)
-u = unique(y)
-d = Dict([(i, count(x->x == i, y)) for i in u])
-println("count for 10 is $(d[10])")
-
-
-function foo(a,b)
-    a+b, a*b
-end
-
-c = foo(3,2)[1]
-
-c[1]
-
-1 + nothing
