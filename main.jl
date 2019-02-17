@@ -96,7 +96,7 @@ end
 #シーケンスを独自ルールでLOUDSのTrie木構造に変換して返却する　まだできてない
 function sequenceToLouds(sequence)
     #トライ木をLOUDSで表現するためのビット配列　初期値として1番ノードを指すtと、
-    #ルートノードのの終端を指すfと、
+    #ルートノードの終端を指すfと、
     #1番ノードの終端を指すfが入ってる
     bitAry = BitArray([true,false,false])
     #各ノードに対応するラベル　形式は[sequenceの要素, その要素が出現したインデックス1, その要素が出現したインデックス2,...]
@@ -125,11 +125,19 @@ function sequenceToLouds(sequence)
                 
                 #検索対象となるノードが持つsequence上のインデックスを取得。
                 #ラベルから取得するが、現在のseqIdx　- 1 と同じ値の要素は取得しない　あくまで過去の要素が対象
-                searchTargetSeqIdxes = filter!(e->e ≠ seqIdx - 1, label[searchTargetNode[2]][2:end])
-                
+                targetLabelIdx = 0
+                if searchTargetNode[1] == 1
+                    targetLabelIdx = searchTargetNode[2]
+                else
+                    targetLabelIdx = eachLevelNodesAccumulatedNumber[1] + searchTargetNode[2]
+                end
+
+
+                searchTargetSeqIdxes = filter!(e->e ≠ seqIdx - 1, label[targetLabelIdx][2:end])
+                println("searchTargetSeqIdxes", searchTargetSeqIdxes)
                 #ラベルから取得した過去のsequence上のインデックスの右隣が検索対象
                 searchTargetChildrenSeqIdxes = searchTargetSeqIdxes + repeat([1], length(searchTargetSeqIdxes))
-                
+                println("searchTargetChildrenSeqIdxes", searchTargetChildrenSeqIdxes)
                 #シーケンス上に、今来ているelmと一致したインデックスを取得
                 foundMatchLabelIdxes = searchTargetChildrenSeqIdxes[findall(isequal(elm), [sequence[i] for i in searchTargetChildrenSeqIdxes])]
                 #1つでも一致したシーケンスがあれば、bitAryとlabelを更新する必要がある
@@ -141,7 +149,7 @@ function sequenceToLouds(sequence)
                     println("bitAry", bitAry)
 
                     #子ノードの情報（子ノードの数、子ノードと同じ階層の上の従兄弟の数、子ノードの終端のfalseのbitIdx）を取得する
-                    bitIdx, childrenNumber, brotherChildrenNumber = getChildIdx(levelBoundaryBaIdx, searchTargetNode, bitAry)
+                    bitIdx, childrenNumber, brotherChildrenNumber = getChild(levelBoundaryBaIdx, searchTargetNode, bitAry)
                     println("bitIdx", bitIdx)
                     println("searchTargetNode", searchTargetNode)
                     println("brotherChildrenNumber", brotherChildrenNumber)
@@ -162,7 +170,9 @@ function sequenceToLouds(sequence)
                         if matchChildLabelIdx != nothing
                             #既存のノードラベルにfoundMatchLabelIdxesを追加する
                             childLabelStartIdx += matchChildLabelIdx
-                            label[matchChildLabelIdx] = insert!(unique!(sort(append!(label[matchChildLabelIdx][2:end], foundMatchLabelIdxes))), 1label[matchChildLabelIdx[1]])
+                            println("list",unique!(sort(append!(label[matchChildLabelIdx][2:end], foundMatchLabelIdxes))))
+                            println("list2 ", label[matchChildLabelIdx][1])
+                            label[matchChildLabelIdx] = insert!(unique!(sort(append!(label[matchChildLabelIdx][2:end], foundMatchLabelIdxes))), 1, label[matchChildLabelIdx][1])
 
                             push!(tmpSearchTargetNodes, [searchTargetNode[1] + 1, brotherChildrenNumber + matchChildLabelIdx, bitIdx - childrenNumber - 1 + matchChildLabelIdx])
 
@@ -171,21 +181,18 @@ function sequenceToLouds(sequence)
                         else
                             #子ノード追加
                             insert!(bitAry, bitIdx, true)
-                            #searchTargetNodeを追加する
-                            push!(tmpSearchTargetNodes, [searchTargetNode[1] + 1, brotherChildrenNumber + childrenNumber + 1, bitIdx])
-                            #各階層のノード数更新
-                            broadcast(+, eachLevelNodesAccumulatedNumber[searchTargetNode[1] + 1:end], 1)
-                            if searchTargetNode[1] + 1 > length(eachLevelNodesAccumulatedNumber)
-                                push!(eachLevelNodesAccumulatedNumber, eachLevelNodesAccumulatedNumber[end] + 1)
-                            end
-                            
+
                             #各階層のbitAry上の区切り位置更新
-                            broadcast(+, levelBoundaryBaIdx[searchTargetNode[1] + 2:end], 1)
-                            if searchTargetNode[1] + 1 > length(levelBoundaryBaIdx)
-                                push!(levelBoundaryBaIdx, bitIdx)
-                            end
-                            #追加したノードに対応するfalseを追加
-                            insert!(bitAry, getChildIdx(levelBoundaryBaIdx, [searchTargetNode[1] + 1, brotherChildrenNumber + 1], bitAry)[1], false)
+                            #追加した子ノードの子ノードが存在しているかもしれない階層まで、区切り位置の配列が情報を持っていなければ追加
+                            #適切な位置にfalseを追加
+                            insert!(bitAry, getChild(levelBoundaryBaIdx, [searchTargetNode[1] + 1, brotherChildrenNumber + childrenNumber + 1], bitAry)[1], false)
+                            #子ノードを追加した階層より右側の区切り位置を1増やす
+                            levelBoundaryBaIdx[searchTargetNode[1] + 2] += 1
+            
+                            levelBoundaryBaIdx[searchTargetNode[1] + 3:end] += repeat([2], length(levelBoundaryBaIdx[searchTargetNode[1] + 3:end]))
+                            println("A1", levelBoundaryBaIdx)
+                            #子ノードを追加した階層から右側のノード数を1増やす
+                            eachLevelNodesAccumulatedNumber[searchTargetNode[1]:end] += repeat([1], length(eachLevelNodesAccumulatedNumber[searchTargetNode[1]:end]))
                             #labelに追加
                             insert!(label, childrenLabelIdxes[end] + 1, insert!(foundMatchLabelIdxes, 1, elm))
 
@@ -202,37 +209,38 @@ function sequenceToLouds(sequence)
                                     end
                                 end
                             end
+                            #searchTargetNodeを追加する。
+                            push!(tmpSearchTargetNodes, [searchTargetNode[1] + 1, brotherChildrenNumber + childrenNumber + 1, bitIdx])
                         end
                     
                     #子ノードが存在していなければ子ノードを追加する
                     else
                         #子ノード追加
                         insert!(bitAry, bitIdx, true)
-                        println("ssss", bitAry)
-                        #各階層のノード数更新 
-                        #長さが
-                        if eachLevelNodesAccumulatedNumber > 
-
-                        end
-                        #子ノードの位置以降を追加
-                        broadcast(+, eachLevelNodesAccumulatedNumber[searchTargetNode[1] + 1:end], 1)
-                        # if searchTargetNode[1] + 1 > length(eachLevelNodesAccumulatedNumber)
-                        #     push!(eachLevelNodesAccumulatedNumber, eachLevelNodesAccumulatedNumber[end] + 1)
-                        # end
-                        if length(levelBoundaryBaIdx) < searchTargetNode[1] + 2
-                            push!(levelBoundaryBaIdx, )
-                        end
                         #各階層のbitAry上の区切り位置更新
-                        broadcast(+, levelBoundaryBaIdx[searchTargetNode[1] + 2:end], 1)
-
-                        
-                        # if searchTargetNode[1] + 1 > length(levelBoundaryBaIdx)
-                                                    
-                        #     push!(levelBoundaryBaIdx, bitIdx)
-                        #     println("koko", eachLevelNodesAccumulatedNumber)
-                        # end
-                        #追加したノードに対応するfalseを追加
-                        insert!(bitAry, getChildIdx(levelBoundaryBaIdx, [searchTargetNode[1] + 1, brotherChildrenNumber + 1], bitAry)[1], false)
+                        #追加した子ノードの子ノードが存在しているかもしれない階層まで、区切り位置の配列が情報を持っていなければ追加
+                        if length(levelBoundaryBaIdx) < searchTargetNode[1] + 2
+                            push!(levelBoundaryBaIdx, levelBoundaryBaIdx[end] + length(bitAry[levelBoundaryBaIdx[end]:end]))
+                            #falseも追加
+                            push!(bitAry, false)
+                        #既に存在している場合
+                        else
+                            #適切な位置にfalseを追加
+                            insert!(bitAry, getChild(levelBoundaryBaIdx, [searchTargetNode[1] + 1, brotherChildrenNumber + 1], bitAry)[1], false)
+                            #子ノードを追加した階層より右側の区切り位置を1増やす
+                            levelBoundaryBaIdx[searchTargetNode[1] + 2] += 1
+                            levelBoundaryBaIdx[searchTargetNode[1] + 3:end] += repeat([2], length(levelBoundaryBaIdx[searchTargetNode[1] + 3:end]))
+                            println("A2", levelBoundaryBaIdx)
+                        end
+                        #今回追加した子ノードの階層まで、各階層のノード数配列が情報を持っていなければ追加
+                        if length(eachLevelNodesAccumulatedNumber) < searchTargetNode[1] + 1
+                            push!(eachLevelNodesAccumulatedNumber, eachLevelNodesAccumulatedNumber[end] + 1)
+                        #既に存在している場合
+                        else
+                            #子ノードを追加した階層から右側のノード数を1増やす
+                            eachLevelNodesAccumulatedNumber[searchTargetNode[1]:end] += repeat([1], length(eachLevelNodesAccumulatedNumber[searchTargetNode[1]:end]))
+                        end
+                
                         #labelに追加
                         insert!(label, childLabelStartIdx + 1, insert!(foundMatchLabelIdxes, 1, elm))
 
@@ -249,12 +257,9 @@ function sequenceToLouds(sequence)
                                 end
                             end
                         end
-
                         #searchTargetNodeを追加する。
                         push!(tmpSearchTargetNodes, [searchTargetNode[1] + 1, brotherChildrenNumber + 1, bitIdx])
-
                     end
-
                 end
             end
             #次回の検索用配列にコピー
@@ -275,12 +280,11 @@ function sequenceToLouds(sequence)
             else
             #ルートノードの子にいない場合は追加
                 insert!(bitAry, 2 + eachLevelNodesAccumulatedNumber[1] + 1, true)
-                insert!(bitAry, getChildIdx(levelBoundaryBaIdx, [1, eachLevelNodesAccumulatedNumber[1] + 1], bitAry)[1], false)
+                insert!(bitAry, getChild(levelBoundaryBaIdx, [1, eachLevelNodesAccumulatedNumber[1] + 1], bitAry)[1], false)
                 insert!(label,  eachLevelNodesAccumulatedNumber[1] + 1, [elm, seqIdx])
-                broadcast(+, eachLevelNodesAccumulatedNumber, 1)
-                broadcast(+, levelBoundaryBaIdx[2:end], 1)
-                
-                push!(levelBoundaryBaIdx, 2 + eachLevelNodesAccumulatedNumber[1] + 2)
+                eachLevelNodesAccumulatedNumber += repeat([1], length(eachLevelNodesAccumulatedNumber))
+                levelBoundaryBaIdx[2:end] += repeat([1], length(levelBoundaryBaIdx[2:end]))
+                println("A3", levelBoundaryBaIdx)
             end
         #なければ追加
         else
@@ -300,8 +304,8 @@ function sequenceToLouds(sequence)
 end
 
 
-
-function getChildIdx(levelBoundaryBaIdx, searchTargetNode, bitAry)
+# 渡したノードの子ノードの情報を取得
+function getChild(levelBoundaryBaIdx, searchTargetNode, bitAry)
     println("ppp", levelBoundaryBaIdx)
     println("pppp", searchTargetNode)
     brotherNumber = 0
@@ -342,7 +346,7 @@ function getChildIdx(levelBoundaryBaIdx, searchTargetNode, bitAry)
     return bitIdx, childrenNumber, brotherChildrenNumber
 end
 
-
+# PlantUMLファイル生成。Trie木を可視化。
 function trieToPuml(bitAry, label)
     open("tree.puml", "w") do file
         write(file, "'This file was automatically generated.\n@startuml tree_diagram\nobject 0\n")

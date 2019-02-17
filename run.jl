@@ -3,7 +3,7 @@ include("main.jl")
 
 ############## trie木を作る ##############
 # pitchSequence =rand(1:10,50)
-pitchSequence = [1,2,3,1,2,3,1,2,3]
+pitchSequence = [1,5,3,5,1, 5,3]
 differenceSequence = trie.seqenceToDifferenceSequence(pitchSequence)
 binarySequence = trie.sequenceToBinarySequence(differenceSequence)
 @time trie.sequenceToLouds(binarySequence)
