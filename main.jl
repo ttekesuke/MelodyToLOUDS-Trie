@@ -51,20 +51,24 @@ function dtwDistance(s1, s2)
 end
 
 #メロディを表示
-function plotMelody(sequences)
+function plotMelody(sequence, bitAry, label, targetLabelIdx, eachLevelNodesAccumulatedNumber)
+
     #plot装飾用
-    xticks_values = [1,3,11,19,28,35,43,51,59]
-    xticks_labels = ["0","1","2","3","4","5","6","7","8"]
-    yticks_values = [57, 59, 60, 62, 64, 65, 67, 69]
-    yticks_labels = ["A","B","C","D","E","F","G","A"]
+    xticks_values = [i * 8 for i in 1:div(length(sequence), 8)]
+    xticks_labels = [i for i in 1:div(length(sequence), 8)]
+    yticks_values = [36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72,]
+    yticks_labels = ["C","D","E","F","G","A","B","C","D","E","F","G","A","B","C","D","E","F","G","A","B",]
 
     #表示
-    plot([sequences[i]["data"] for i in 1:length(sequences)],
-    labels = [sequences[i]["name"] for i in 1:length(sequences)],
+    plot(sequence,
+    size = (1800, 500),
+    labels = "melody",
     xticks = (xticks_values, xticks_labels),
+
     yticks = (yticks_values, yticks_labels),
     xlabel = "measure",
     ylabel = "pitch(natural tone name)")
+
 end
 
 #シーケンスを、階差数列にして返却する
@@ -163,7 +167,7 @@ function sequenceToLouds(sequence)
                             levelBoundaryBaIdx[searchTargetNode[1] + 2] += 1
                             levelBoundaryBaIdx[searchTargetNode[1] + 3:end] += repeat([2], length(levelBoundaryBaIdx[searchTargetNode[1] + 3:end]))
                             #子ノードを追加した階層から右側のノード数を1増やす
-                            eachLevelNodesAccumulatedNumber[searchTargetNode[1]+ 1:end] += repeat([1], length(eachLevelNodesAccumulatedNumber[searchTargetNode[1]+ 1:end]))
+                            eachLevelNodesAccumulatedNumber[searchTargetNode[1] + 1:end] += repeat([1], length(eachLevelNodesAccumulatedNumber[searchTargetNode[1] + 1:end]))
                             #labelに追加
                             insert!(label, childrenLabelIdxes[end] + 1, insert!(foundMatchLabelIdxes, 1, elm))
                             #既に登録されているsearchTargetNodesを更新
@@ -208,7 +212,7 @@ function sequenceToLouds(sequence)
                         #既に存在している場合
                         else
                             #子ノードを追加した階層から右側のノード数を1増やす
-                            eachLevelNodesAccumulatedNumber[searchTargetNode[1]+ 1:end] += repeat([1], length(eachLevelNodesAccumulatedNumber[searchTargetNode[1] + 1:end]))
+                            eachLevelNodesAccumulatedNumber[searchTargetNode[1] + 1:end] += repeat([1], length(eachLevelNodesAccumulatedNumber[searchTargetNode[1] + 1:end]))
                         end
                         #labelに追加
                         insert!(label, childLabelStartIdx + 1, insert!(foundMatchLabelIdxes, 1, elm))
@@ -263,7 +267,8 @@ function sequenceToLouds(sequence)
         end
     end
     #pumlファイル生成　生成ファイルが重い可能性があるので注意
-    #trieToPuml(bitAry, label)
+    # trieToPuml(bitAry, label)
+    plotMelody(sequence, bitAry, label, 533, eachLevelNodesAccumulatedNumber)
 end
 
 # 渡したノードの子ノードの情報を取得
