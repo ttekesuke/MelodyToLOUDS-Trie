@@ -1,30 +1,19 @@
 include("main.jl")
 # using ASTInterpreter2
 
-############## trie木を作る ##############
-# pitchSequence =rand(1:10,1000)
-
-include("main.jl")
+############## midiデータからtrie木を作る ##############
 using MIDI
 midi = MIDI.readMIDIFile("bach.mid")
 notes = getnotes(midi.tracks[1], midi.tpq)
 pitchSequence = [Int(notes[i].pitch) for i in 1:length(notes)]
-
-
-
 differenceSequence = trie.seqenceToDifferenceSequence(pitchSequence)
 binarySequence = trie.sequenceToBinarySequence(differenceSequence)
-@time trie.sequenceToLouds(binarySequence)
+bitAry, label, eachLevelNodesAccumulatedNumber, levelBoundaryBaIdx = @time trie.sequenceToLouds(binarySequence)
+#ルート直下のノードから576番目のノードまでの上下パターンになっているシーケンスの部分列をすべて表示
+trie.plotMatchSubsequence(pitchSequence, bitAry, label, eachLevelNodesAccumulatedNumber, 576)
 
-############## midiファイルを読み込んでpitchを取得する ##############
-
-############## DTW距離を計算する ##############
-#計測対象の時系列データセット
-
-
-
-############## メロディを表示する ##############
-
+#PlantUMLファイルを生成　長さによっては出力ファイルが大きくなるので注意
+#trie.trieToPuml(bitAry, label)
 
 ############## メロディーサンプル ##############
 sequences = [
@@ -33,5 +22,5 @@ Dict("name" => "dokomademoikou", "data" => [60,62,64,64,64,60,59,59,60,62,60,60,
 Dict("name" => "hisou", "data" => [60,62,63,63,63,65,62,62,62,63,60,60,60,60,60,59,60,62,63,62,63,65,67,67,67,67,67,67,67,67,67,67,65,67,68,68,68,68,62,62,63,65,67,67,67,67,60,60,60,62,63,63,63,65,62,62,62,63,60,60,60,60,60,60]),
 Dict("name" => "all C", "data" => [60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,60,]),
 ]
-
+############## DTW距離を計算する ##############
 trie.calcDtwDistances(sequences)

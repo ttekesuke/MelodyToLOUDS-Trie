@@ -7,7 +7,7 @@ function calcDtwDistances(sequences)
     sequenceCombination = collect(combinations(sequences, 2))
     #全組み合わせの時系列同士の距離を計算する
     for seq in sequenceCombination
-        
+        println("DTW-Distance between ", seq[1]["name"], " and ", seq[2]["name"], " is ", dtwDistance(seq[1]["data"], seq[2]["data"]))
     end
 end
 
@@ -50,25 +50,41 @@ function dtwDistance(s1, s2)
     return currentDtwAry[end]
 end
 
-#メロディを表示
-function plotMelody(sequence, bitAry, label, targetLabelIdx, eachLevelNodesAccumulatedNumber)
-
+#一致した部分列をプロットする　trie木の親ノード直下のノードから、指定したノードまでの部分列の形状を持つ、実際の部分列のみを表示する
+function plotMatchSubsequence(sequence, bitAry, label, eachLevelNodesAccumulatedNumber, targetLabelIdx)
+    #targetLabelIdxがどの階層にいるか判定 TODO:これ高速化したい
+    targetNodeLevel = 0
+    for nodesAccumulatedNumber in eachLevelNodesAccumulatedNumber
+        targetNodeLevel += 1
+        if nodesAccumulatedNumber ≥ targetLabelIdx
+            break
+        end
+    end
+    #labelの2番目以降に格納されているseqIdxesは、部分列の終端位置を指す。
+    #現時点では、ソースとなるsequenceが階差数列になっているため実際の終端位置を出すために+1する
+    endIndexes = label[targetLabelIdx][2:end] + repeat([1], length(label[targetLabelIdx][2:end]))
+    #終端位置から所属階層位置の数を引くことで、対象のノードまでの部分列の開始位置を取得する
+    startSeqIdxes = endIndexes - repeat([targetNodeLevel], length(endIndexes))
+    #全部分列を取得
+    subSequences = []
+    for i in 1:length(startSeqIdxes)
+        subSequence = repeat([NaN], startSeqIdxes[i] - 1)
+        append!(subSequence, sequence[startSeqIdxes[i]:endIndexes[i]])
+        append!(subSequence, repeat([NaN], length(sequence) - endIndexes[i]))
+        push!(subSequences, subSequence)
+    end
     #plot装飾用
-    xticks_values = [i * 8 for i in 1:div(length(sequence), 8)]
-    xticks_labels = [i for i in 1:div(length(sequence), 8)]
-    yticks_values = [36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72,]
-    yticks_labels = ["C","D","E","F","G","A","B","C","D","E","F","G","A","B","C","D","E","F","G","A","B",]
-
+    xticks_values = [1 + i * 16 for i in 0:div(length(sequence), 16)]
+    xticks_labels = [i for i in 1:div(length(sequence), 16)]
+    yticks_values = [43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72,]
+    yticks_labels = ["G","A","B","C","D","E","F","G","A","B","C","D","E","F","G","A","B",]
     #表示
-    plot(sequence,
-    size = (1800, 500),
-    labels = "melody",
+    plot([subSequences[i] for i in 1:length(subSequences)],
+    size = (2200, 500),
     xticks = (xticks_values, xticks_labels),
-
     yticks = (yticks_values, yticks_labels),
     xlabel = "measure",
     ylabel = "pitch(natural tone name)")
-
 end
 
 #シーケンスを、階差数列にして返却する
@@ -81,7 +97,6 @@ function seqenceToDifferenceSequence(sequence)
     end
     return differenceSequence
 end
-
 
 #シーケンスを増加または減少の2値（1, -1）に変換して返却する
 function sequenceToBinarySequence(sequence)
@@ -96,8 +111,7 @@ function sequenceToBinarySequence(sequence)
     return binarySequence
 end
 
-
-#シーケンスを独自ルールでLOUDSのTrie木構造に変換して返却する　まだできてない
+#シーケンスを独自ルールでLOUDSのTrie木構造に変換して返却する
 function sequenceToLouds(sequence)
     #トライ木をLOUDSで表現するためのビット配列　初期値として1番ノードを指すtと、
     #ルートノードの終端を指すfと、
@@ -109,10 +123,8 @@ function sequenceToLouds(sequence)
     searchTargetNodes = []
     #シーケンス番号
     seqIdx = 0
-
     #各階層のノード数　ルート直下からスタート
     eachLevelNodesAccumulatedNumber = []
-
     #各階層のbitAry上の区切り位置
     levelBoundaryBaIdx = [3]
 
@@ -153,7 +165,9 @@ function sequenceToLouds(sequence)
                         if matchChildLabelIdx != nothing
                             #既存のノードラベルにfoundMatchLabelIdxesを追加する
                             childLabelStartIdx += matchChildLabelIdx
-                            label[childLabelStartIdx] = insert!(unique!(sort(append!(label[matchChildLabelIdx][2:end], foundMatchLabelIdxes))), 1, label[matchChildLabelIdx][1])
+                            
+                            label[childLabelStartIdx] = insert!(unique!(sort(append!(label[childLabelStartIdx][2:end], foundMatchLabelIdxes))), 1, label[childLabelStartIdx][1])
+                            
                             push!(tmpSearchTargetNodes, [searchTargetNode[1] + 1, brotherChildrenNumber + matchChildLabelIdx, bitIdx - childrenNumber - 1 + matchChildLabelIdx])
                         #一致したノードがなければノード追加
                         else
@@ -171,18 +185,7 @@ function sequenceToLouds(sequence)
                             #labelに追加
                             insert!(label, childrenLabelIdxes[end] + 1, insert!(foundMatchLabelIdxes, 1, elm))
                             #既に登録されているsearchTargetNodesを更新
-                            if length(tmpSearchTargetNodes) > 0
-                                for pastSearchTargetNode in tmpSearchTargetNodes
-                                    #今回追加したbitIdxより後ろのbitIdxの場合、1つ右にずらす
-                                    if bitIdx < pastSearchTargetNode[3]
-                                        pastSearchTargetNode[3] += 1     
-                                        #さらに同じ階層の場合、ノードの左からの順番も1つ右にずらす
-                                        if searchTargetNode[1] == pastSearchTargetNode[1]
-                                            pastSearchTargetNode[1] += 1
-                                        end
-                                    end
-                                end
-                            end
+                            tmpSearchTargetNodes = updateSearchTargetNodes(tmpSearchTargetNodes, bitIdx, searchTargetNode)
                             #searchTargetNodeを追加する。
                             push!(tmpSearchTargetNodes, [searchTargetNode[1] + 1, brotherChildrenNumber + childrenNumber + 1, bitIdx])
                         end
@@ -204,7 +207,6 @@ function sequenceToLouds(sequence)
                             #子ノードを追加した階層より右側の区切り位置を1増やす
                             levelBoundaryBaIdx[searchTargetNode[1] + 2] += 1
                             levelBoundaryBaIdx[searchTargetNode[1] + 3:end] += repeat([2], length(levelBoundaryBaIdx[searchTargetNode[1] + 3:end]))
-                            
                         end
                         #今回追加した子ノードの階層まで、各階層のノード数配列が情報を持っていなければ追加
                         if length(eachLevelNodesAccumulatedNumber) < searchTargetNode[1] + 1
@@ -217,18 +219,7 @@ function sequenceToLouds(sequence)
                         #labelに追加
                         insert!(label, childLabelStartIdx + 1, insert!(foundMatchLabelIdxes, 1, elm))
                         #既に登録されているsearchTargetNodesを更新
-                        if length(tmpSearchTargetNodes) > 0
-                            for pastSearchTargetNode in tmpSearchTargetNodes
-                                #今回追加したbitIdxより後ろのbitIdxの場合、1つ右にずらす
-                                if bitIdx < pastSearchTargetNode[3]
-                                    pastSearchTargetNode[3] += 1     
-                                    #さらに同じ階層の場合、ノードの左からの順番も1つ右にずらす
-                                    if searchTargetNode[1] == pastSearchTargetNode[1]
-                                        pastSearchTargetNode[1] += 1
-                                    end
-                                end
-                            end
-                        end
+                        tmpSearchTargetNodes = updateSearchTargetNodes(tmpSearchTargetNodes, bitIdx, searchTargetNode)
                         #searchTargetNodeを追加する。
                         push!(tmpSearchTargetNodes, [searchTargetNode[1] + 1, brotherChildrenNumber + 1, bitIdx])
                     end
@@ -239,7 +230,7 @@ function sequenceToLouds(sequence)
             searchTargetNodes = tmpSearchTargetNodes
         end
         #ルートの子ノードに追加する
-        #子供があれば
+        #子ノードがあれば
         if length(eachLevelNodesAccumulatedNumber) > 0
             #同じ要素が子ノードにあるか検索
             matchRootChildLabelIdx = findfirst(isequal(elm), [labelElm[1] for labelElm in label[1:eachLevelNodesAccumulatedNumber[1]]])
@@ -266,9 +257,7 @@ function sequenceToLouds(sequence)
             push!(levelBoundaryBaIdx, 5)
         end
     end
-    #pumlファイル生成　生成ファイルが重い可能性があるので注意
-    # trieToPuml(bitAry, label)
-    plotMelody(sequence, bitAry, label, 533, eachLevelNodesAccumulatedNumber)
+    return bitAry, label, eachLevelNodesAccumulatedNumber, levelBoundaryBaIdx
 end
 
 # 渡したノードの子ノードの情報を取得
@@ -305,6 +294,23 @@ function getChild(levelBoundaryBaIdx, searchTargetNode, bitAry)
         end                        
     end
     return bitIdx, childrenNumber, brotherChildrenNumber
+end
+
+#既に登録されているsearchTargetNodesを更新
+function updateSearchTargetNodes(tmpSearchTargetNodes, bitIdx, searchTargetNode)
+    if length(tmpSearchTargetNodes) > 0
+        for pastSearchTargetNode in tmpSearchTargetNodes
+            #今回追加したbitIdxより後ろのbitIdxの場合、1つ右にずらす
+            if bitIdx < pastSearchTargetNode[3]
+                pastSearchTargetNode[3] += 1     
+                #さらに同じ階層の場合、ノードの左からの順番も1つ右にずらす
+                if searchTargetNode[1] == pastSearchTargetNode[1]
+                    pastSearchTargetNode[1] += 1
+                end
+            end
+        end
+    end
+    return tmpSearchTargetNodes
 end
 
 # PlantUMLファイル生成。Trie木を可視化。
