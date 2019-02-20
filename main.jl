@@ -7,7 +7,7 @@ function calcDtwDistances(sequences)
     sequenceCombination = collect(combinations(sequences, 2))
     #全組み合わせの時系列同士の距離を計算する
     for seq in sequenceCombination
-        println("DTW-Distance between ", seq[1]["name"], " and ", seq[2]["name"], " is ", dtwDistance(seq[1]["data"], seq[2]["data"]))
+        println("DTW-Distance between ", seq[1]["subSequenceStartIdx"], " and ", seq[2]["subSequenceStartIdx"], " is ", dtwDistance(seq[1]["data"], seq[2]["data"]))
     end
 end
 
@@ -50,8 +50,8 @@ function dtwDistance(s1, s2)
     return currentDtwAry[end]
 end
 
-#一致した部分列をプロットする　trie木の親ノード直下のノードから、指定したノードまでの部分列の形状を持つ、実際の部分列のみを表示する
-function plotMatchSubsequence(sequence, bitAry, label, eachLevelNodesAccumulatedNumber, targetLabelIdx)
+#trie木の親ノード直下のノードから、指定したノード（targetLabelIdx）までの部分列の形状を持つ、実際の部分列群を返却する
+function getMatchSubsequences(sequence, label, eachLevelNodesAccumulatedNumber, targetLabelIdx)
     #targetLabelIdxがどの階層にいるか判定 TODO:これ高速化したい
     targetNodeLevel = 0
     for nodesAccumulatedNumber in eachLevelNodesAccumulatedNumber
@@ -62,16 +62,27 @@ function plotMatchSubsequence(sequence, bitAry, label, eachLevelNodesAccumulated
     end
     #labelの2番目以降に格納されているseqIdxesは、部分列の終端位置を指す。
     #現時点では、ソースとなるsequenceが階差数列になっているため実際の終端位置を出すために+1する
-    endIndexes = label[targetLabelIdx][2:end] + repeat([1], length(label[targetLabelIdx][2:end]))
+    endSeqIndexes = label[targetLabelIdx][2:end] + repeat([1], length(label[targetLabelIdx][2:end]))
     #終端位置から所属階層位置の数を引くことで、対象のノードまでの部分列の開始位置を取得する
-    startSeqIdxes = endIndexes - repeat([targetNodeLevel], length(endIndexes))
-    #全部分列を取得
+    startSeqIdxes = endSeqIndexes - repeat([targetNodeLevel], length(endSeqIndexes))
+    #全部分列を取得する
     subSequences = []
     for i in 1:length(startSeqIdxes)
-        subSequence = repeat([NaN], startSeqIdxes[i] - 1)
-        append!(subSequence, sequence[startSeqIdxes[i]:endIndexes[i]])
-        append!(subSequence, repeat([NaN], length(sequence) - endIndexes[i]))
-        push!(subSequences, subSequence)
+        push!(subSequences, Dict("subSequenceStartIdx" => startSeqIdxes[i], "data" => sequence[startSeqIdxes[i]:endSeqIndexes[i]]))
+    end
+    return subSequences, startSeqIdxes, endSeqIndexes
+end
+
+#一致した部分列群をプロットする
+function plotSubsequences(sequence, subSequences, startSeqIdxes, endSeqIdxes)
+    #TODO:ここdeepcopyにしたい
+    subSequencesForPlot = subSequences
+
+    for i in 1:length(subSequences)
+        subSequencesForPlotData = repeat([NaN], startSeqIdxes[i] - 1)
+        append!(subSequencesForPlotData, subSequences[i]["data"]) 
+        append!(subSequencesForPlotData, repeat([NaN], length(sequence) - endSeqIdxes[i]))
+        subSequencesForPlot[i]["data"] = subSequencesForPlotData
     end
     #plot装飾用
     xticks_values = [1 + i * 16 for i in 0:div(length(sequence), 16)]
@@ -79,7 +90,7 @@ function plotMatchSubsequence(sequence, bitAry, label, eachLevelNodesAccumulated
     yticks_values = [43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72,]
     yticks_labels = ["G","A","B","C","D","E","F","G","A","B","C","D","E","F","G","A","B",]
     #表示
-    plot([subSequences[i] for i in 1:length(subSequences)],
+    plot([subSequencesForPlot[i]["data"] for i in 1:length(subSequencesForPlot)],
     size = (2200, 500),
     xticks = (xticks_values, xticks_labels),
     yticks = (yticks_values, yticks_labels),

@@ -9,9 +9,12 @@ pitchSequence = [Int(notes[i].pitch) for i in 1:length(notes)]
 differenceSequence = trie.seqenceToDifferenceSequence(pitchSequence)
 binarySequence = trie.sequenceToBinarySequence(differenceSequence)
 bitAry, label, eachLevelNodesAccumulatedNumber, levelBoundaryBaIdx = @time trie.sequenceToLouds(binarySequence)
-#ルート直下のノードから576番目のノードまでの上下パターンになっているシーケンスの部分列をすべて表示
-trie.plotMatchSubsequence(pitchSequence, bitAry, label, eachLevelNodesAccumulatedNumber, 576)
-
+#trie木の親ノード直下のノードから、指定したノード番号（第四引数）までの部分列の形状を持つ、実際の部分列群を取得する
+subSequences, startSeqIdxes, endSeqIdxes = trie.getMatchSubsequences(pitchSequence, label, eachLevelNodesAccumulatedNumber, 516)
+#取得した部分列群から2つ取り出し、DTW距離を計測。全ての組み合わせで距離を出し、表示する。
+trie.calcDtwDistances(subSequences)
+#取得した部分列群を表示
+trie.plotSubsequences(pitchSequence, subSequences, startSeqIdxes, endSeqIdxes)
 #PlantUMLファイルを生成　長さによっては出力ファイルが大きくなるので注意
 #trie.trieToPuml(bitAry, label)
 
