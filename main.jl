@@ -2,56 +2,7 @@ module trie
 using Plots
 using Combinatorics
 
-
-#trie木の親ノード直下のノードから、指定したノード（targetLabelIdx）までの部分列の形状を持つ、実際の部分列群を返却する
-function getMatchSubsequences(sequence, label, eachLevelNodesAccumulatedNumber, targetLabelIdx)
-    #targetLabelIdxがどの階層にいるか判定 TODO:これ高速化したい
-    targetNodeLevel = 0
-    for nodesAccumulatedNumber in eachLevelNodesAccumulatedNumber
-        targetNodeLevel += 1
-        if nodesAccumulatedNumber ≥ targetLabelIdx
-            break
-        end
-    end
-    #labelの2番目以降に格納されているseqIdxesは、部分列の終端位置を指す。
-    #現時点では、ソースとなるsequenceが階差数列になっているため実際の終端位置を出すために+1する
-    endSeqIndexes = label[targetLabelIdx][2:end] + repeat([1], length(label[targetLabelIdx][2:end]))
-    #終端位置から所属階層位置の数を引くことで、対象のノードまでの部分列の開始位置を取得する
-    startSeqIdxes = endSeqIndexes - repeat([targetNodeLevel], length(endSeqIndexes))
-    #全部分列を取得する
-    subSequences = []
-    for i in 1:length(startSeqIdxes)
-        push!(subSequences, Dict("subSequenceStartIdx" => startSeqIdxes[i], "data" => sequence[startSeqIdxes[i]:endSeqIndexes[i]]))
-    end
-    return subSequences, startSeqIdxes, endSeqIndexes
-end
-
-#一致した部分列群をプロットする
-function plotSubsequences(sequence, subSequences, startSeqIdxes, endSeqIdxes)
-    #TODO:ここdeepcopyにしたい
-    subSequencesForPlot = deepcopy(subSequences)
-
-    for i in 1:length(subSequencesForPlot)
-        subSequencesForPlotData = repeat([NaN], startSeqIdxes[i] - 1)
-        append!(subSequencesForPlotData, subSequences[i]["data"]) 
-        append!(subSequencesForPlotData, repeat([NaN], length(sequence) - endSeqIdxes[i]))
-        subSequencesForPlot[i]["data"] = subSequencesForPlotData
-    end
-    #plot装飾用
-    xticks_values = [1 + i * 16 for i in 0:div(length(sequence), 16)]
-    xticks_labels = [i for i in 1:div(length(sequence), 16)]
-    yticks_values = [43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72,]
-    yticks_labels = ["G","A","B","C","D","E","F","G","A","B","C","D","E","F","G","A","B",]
-    #表示
-    plot([subSequencesForPlot[i]["data"] for i in 1:length(subSequencesForPlot)],
-    size = (2200, 500),
-    xticks = (xticks_values, xticks_labels),
-    yticks = (yticks_values, yticks_labels),
-    xlabel = "measure",
-    ylabel = "pitch(natural tone name)")
-end
-
-#シーケンスを、階差数列にして返却する
+#シーケンスを階差数列にして返却する
 function seqenceToDifferenceSequence(sequence)
     differenceSequence = []
     beforeElm = sequence[1]
@@ -224,7 +175,7 @@ function sequenceToLouds(sequence)
     return bitAry, label, eachLevelNodesAccumulatedNumber, levelBoundaryBaIdx
 end
 
-# 渡したノードの子ノードの情報を取得
+#渡したノードの子ノードの情報を取得
 function getChild(levelBoundaryBaIdx, searchTargetNode, bitAry)
     brotherNumber = 0
     countChildren = false
@@ -277,9 +228,8 @@ function updateSearchTargetNodes(tmpSearchTargetNodes, bitIdx, searchTargetNode)
     return tmpSearchTargetNodes
 end
 
-
+#全部分列の情報を取得する
 function getAllSubSequences(label, sequence, eachLevelNodesAccumulatedNumber)
-
     subSequences = []
     startSeqIdxes = []
     endSeqIdxes = []
@@ -287,15 +237,37 @@ function getAllSubSequences(label, sequence, eachLevelNodesAccumulatedNumber)
     for nodeNumber in 1:length(label)
         #trie木の親ノード直下のノードから、指定したノード番号（第四引数）までの部分列の形状を持つ、実際の部分列群を取得する
         subSequence, startSeqIdx, endSeqIdx = getMatchSubsequences(sequence, label, eachLevelNodesAccumulatedNumber, nodeNumber)
-        #取得した部分列群から2つ取り出し、DTW距離を計測。全ての組み合わせで距離を出し、表示する。
+        #全部追加する
         push!(subSequences, subSequence) 
         push!(startSeqIdxes, startSeqIdx)
         push!(endSeqIdxes, endSeqIdx)
-
     end
     return subSequences, startSeqIdxes, endSeqIdxes
 
 end
+#trie木の親ノード直下のノードから、指定したノード（targetLabelIdx）までの部分列の形状を持つ、実際の部分列群を返却する
+function getMatchSubsequences(sequence, label, eachLevelNodesAccumulatedNumber, targetLabelIdx)
+    #targetLabelIdxがどの階層にいるか判定 TODO:これ高速化したい
+    targetNodeLevel = 0
+    for nodesAccumulatedNumber in eachLevelNodesAccumulatedNumber
+        targetNodeLevel += 1
+        if nodesAccumulatedNumber ≥ targetLabelIdx
+            break
+        end
+    end
+    #labelの2番目以降に格納されているseqIdxesは、部分列の終端位置を指す。
+    #現時点では、ソースとなるsequenceが階差数列になっているため実際の終端位置を出すために+1する
+    endSeqIndexes = label[targetLabelIdx][2:end] + repeat([1], length(label[targetLabelIdx][2:end]))
+    #終端位置から所属階層位置の数を引くことで、対象のノードまでの部分列の開始位置を取得する
+    startSeqIdxes = endSeqIndexes - repeat([targetNodeLevel], length(endSeqIndexes))
+    #全部分列を取得する
+    subSequences = []
+    for i in 1:length(startSeqIdxes)
+        push!(subSequences, Dict("subSequenceStartIdx" => startSeqIdxes[i], "data" => sequence[startSeqIdxes[i]:endSeqIndexes[i]]))
+    end
+    return subSequences, startSeqIdxes, endSeqIndexes
+end
+
 #時系列データセットから2つの時系列データを全組み合わせで取り出して、それらのDTW距離を出す。
 function calcDtwDistances(subSequences)
     dtwDistances = 0
@@ -350,6 +322,43 @@ function calcDtwDistance(s1, s2)
 end
 
 
+#一致した部分列群をプロットする
+function plotSubsequences(sequence, subSequences, startSeqIdxes, endSeqIdxes)
+
+    subSequencesForPlot = deepcopy(subSequences)
+
+    for i in 1:length(subSequencesForPlot)
+        subSequencesForPlotData = repeat([NaN], startSeqIdxes[i] - 1)
+        append!(subSequencesForPlotData, subSequences[i]["data"]) 
+        append!(subSequencesForPlotData, repeat([NaN], length(sequence) - endSeqIdxes[i]))
+        subSequencesForPlot[i]["data"] = subSequencesForPlotData
+    end
+    #plot装飾用
+    xticksValues = [1 + i * 16 for i in 0:div(length(sequence), 16)]
+    xticksLabels = [i for i in 1:div(length(sequence), 16)]
+    majorScaleValue = [0, 2, 4, 5, 7, 9, 11]
+    majorScaleLabel = ["C","D","E","F","G","A","B"]
+    
+    minValOffset = div(minimum(sequence), 12)
+    maxValOffset = div(maximum(sequence), 12)
+    yticksValues = []
+    yticksLabels = []
+    if minValOffset == maxValOffset
+        yticksValues = majorScaleValue * minValOffset
+    else
+        for i in minValOffset:maxValOffset
+            append!(yticksValues, majorScaleValue + repeat([12 * i], 7))
+            append!(yticksLabels, majorScaleLabel)
+        end
+    end
+    #表示
+    plot([subSequencesForPlot[i]["data"] for i in 1:length(subSequencesForPlot)],
+    size = (2200, 500),
+    xticks = (xticksValues, xticksLabels),
+    yticks = (yticksValues, yticksLabels),
+    xlabel = "measure",
+    ylabel = "pitch(natural tone name)")
+end
 # PlantUMLファイル生成。Trie木を可視化。
 function trieToPuml(bitAry, label)
     open("tree.puml", "w") do file
