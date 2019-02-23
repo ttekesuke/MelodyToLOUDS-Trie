@@ -1,54 +1,7 @@
 module trie
 using Plots
 using Combinatorics
-#時系列データセットから2つの時系列データを全組み合わせで取り出して、それらのDTW距離を出す。
-function calcDtwDistances(sequences)
-    #時系列データセットから2つの時系列データを全組み合わせで取り出す
-    sequenceCombination = collect(combinations(sequences, 2))
-    #全組み合わせの時系列同士の距離を計算する
-    for seq in sequenceCombination
-        println("DTW-Distance between ", seq[1]["subSequenceStartIdx"], " and ", seq[2]["subSequenceStartIdx"], " is ", dtwDistance(seq[1]["data"], seq[2]["data"]))
-    end
-end
 
-#DTWで2つの時系列の距離を計算する。
-#s1:比較対象時系列データその1
-#s2:比較対象時系列データその2
-function dtwDistance(s1, s2)
-    #DTW格納用の配列。ループごとに更新される。
-    beforeDtwAry = []
-    currentDtwAry = []
-    #xカウンタ
-    x = 0
-
-    for elm2 in s2
-    #yカウンタ
-        y = 0
-        x = x + 1
-        currentDtwAry = []
-        for elm1 in s1
-            y = y + 1
-            diff = abs(elm2 - elm1)
-            #ループの一番最初だけは先頭同士の差の絶対値
-            if x == 1 && y == 1
-                currentDtwAry = [diff]
-            #ループの1列目は自身の配列のひとつ前の要素
-            elseif x == 1
-                push!(currentDtwAry, diff + currentDtwAry[y - 1])
-            #2列目以降かつ1行目は、前の配列の同じ位置の要素
-            elseif x != 1 && y == 1
-                push!(currentDtwAry, diff + beforeDtwAry[y])
-            #それ以外は、3パターンのうちの最小値
-            else
-                push!(currentDtwAry, diff + minimum([beforeDtwAry[y], beforeDtwAry[y - 1], currentDtwAry[y - 1]]))
-            end
-        end
-        #完成した現在の列を前の列にコピーする
-        beforeDtwAry = currentDtwAry
-    end
-    #DTW配列の最後の要素がDTW-Distance
-    return currentDtwAry[end]
-end
 
 #trie木の親ノード直下のノードから、指定したノード（targetLabelIdx）までの部分列の形状を持つ、実際の部分列群を返却する
 function getMatchSubsequences(sequence, label, eachLevelNodesAccumulatedNumber, targetLabelIdx)
@@ -76,9 +29,9 @@ end
 #一致した部分列群をプロットする
 function plotSubsequences(sequence, subSequences, startSeqIdxes, endSeqIdxes)
     #TODO:ここdeepcopyにしたい
-    subSequencesForPlot = subSequences
+    subSequencesForPlot = deepcopy(subSequences)
 
-    for i in 1:length(subSequences)
+    for i in 1:length(subSequencesForPlot)
         subSequencesForPlotData = repeat([NaN], startSeqIdxes[i] - 1)
         append!(subSequencesForPlotData, subSequences[i]["data"]) 
         append!(subSequencesForPlotData, repeat([NaN], length(sequence) - endSeqIdxes[i]))
@@ -323,6 +276,79 @@ function updateSearchTargetNodes(tmpSearchTargetNodes, bitIdx, searchTargetNode)
     end
     return tmpSearchTargetNodes
 end
+
+
+function getAllSubSequences(label, sequence, eachLevelNodesAccumulatedNumber)
+
+    subSequences = []
+    startSeqIdxes = []
+    endSeqIdxes = []
+    #取得したlabelつまりノードすべて計算
+    for nodeNumber in 1:length(label)
+        #trie木の親ノード直下のノードから、指定したノード番号（第四引数）までの部分列の形状を持つ、実際の部分列群を取得する
+        subSequence, startSeqIdx, endSeqIdx = getMatchSubsequences(sequence, label, eachLevelNodesAccumulatedNumber, nodeNumber)
+        #取得した部分列群から2つ取り出し、DTW距離を計測。全ての組み合わせで距離を出し、表示する。
+        push!(subSequences, subSequence) 
+        push!(startSeqIdxes, startSeqIdx)
+        push!(endSeqIdxes, endSeqIdx)
+
+    end
+    return subSequences, startSeqIdxes, endSeqIdxes
+
+end
+#時系列データセットから2つの時系列データを全組み合わせで取り出して、それらのDTW距離を出す。
+function calcDtwDistances(subSequences)
+    dtwDistances = 0
+    for subSequence in subSequences
+        #時系列データセットから2つの時系列データを全組み合わせで取り出す
+        sequenceCombination = collect(combinations(subSequence, 2))
+        #全組み合わせの時系列同士の距離を計算する
+        for seq in sequenceCombination
+            dtwDistances += calcDtwDistance(seq[1]["data"], seq[2]["data"])
+        end
+    end
+    return dtwDistances
+end
+
+
+#DTWで2つの時系列の距離を計算する。
+#s1:比較対象時系列データその1
+#s2:比較対象時系列データその2
+function calcDtwDistance(s1, s2)
+    #DTW格納用の配列。ループごとに更新される。
+    beforeDtwAry = []
+    currentDtwAry = []
+    #xカウンタ
+    x = 0
+    for elm2 in s2
+    #yカウンタ
+        y = 0
+        x = x + 1
+        currentDtwAry = []
+        for elm1 in s1
+            y = y + 1
+            diff = abs(elm2 - elm1)
+            #ループの一番最初だけは先頭同士の差の絶対値
+            if x == 1 && y == 1
+                currentDtwAry = [diff]
+            #ループの1列目は自身の配列のひとつ前の要素
+            elseif x == 1
+                push!(currentDtwAry, diff + currentDtwAry[y - 1])
+            #2列目以降かつ1行目は、前の配列の同じ位置の要素
+            elseif x != 1 && y == 1
+                push!(currentDtwAry, diff + beforeDtwAry[y])
+            #それ以外は、3パターンのうちの最小値
+            else
+                push!(currentDtwAry, diff + minimum([beforeDtwAry[y], beforeDtwAry[y - 1], currentDtwAry[y - 1]]))
+            end
+        end
+        #完成した現在の列を前の列にコピーする
+        beforeDtwAry = currentDtwAry
+    end
+    #DTW配列の最後の要素がDTW-Distance
+    return currentDtwAry[end]
+end
+
 
 # PlantUMLファイル生成。Trie木を可視化。
 function trieToPuml(bitAry, label)
