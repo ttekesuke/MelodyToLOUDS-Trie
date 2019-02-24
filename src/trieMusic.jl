@@ -1,4 +1,4 @@
-module trie
+module trieMusic
 using Plots
 using Combinatorics
 

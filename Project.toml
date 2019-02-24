@@ -1,0 +1,15 @@
+name = "trieMusic"
+uuid = "1ab353e5-3ac0-5096-91b2-92b42b2b1f27"
+authors = ["ttekesuke <tekesuke1986@hotmail.com>"]
+version = "0.1.0"
+
+[deps]
+Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
+MIDI = "f57c4921-e30c-5f49-b073-3f2f2ada663e"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
