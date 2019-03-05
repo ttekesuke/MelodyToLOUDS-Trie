@@ -1,18 +1,9 @@
 include("./src/trieMusic.jl")
-
+include("./src/midi.jl")
 ############## midiデータからtrie木を作る ##############
-using MIDI
-#midiファイル読み込み
-midi = MIDI.readMIDIFile("./midi/bach_2.mid")
-#1トラック目取得
-notes = getnotes(midi.tracks[1], midi.tpq)
-#ピッチ取得
-pitchSequence = [Int(notes[i].pitch) for i in 1:length(notes)]
 
-durationSequence = [Int(notes[i].duration) for i in 1:length(notes)]
-positionSequence = [Int(notes[i].position) for i in 1:length(notes)]
-velocitySequence = [Int(notes[i].velocity) for i in 1:length(notes)]
 
+pitchSequence, positionSequence, velocitySequence, = midiModule.getMidiDatas("./midi/bach_2.mid")
 
 #階差数列に変換
 differenceSequence = trieMusic.seqenceToDifferenceSequence(pitchSequence)
