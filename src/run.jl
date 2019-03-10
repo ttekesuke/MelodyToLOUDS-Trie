@@ -1,7 +1,7 @@
 include("./src/trieMusic.jl")
 include("./src/midi.jl")
+include("./src/music21.jl")
 ############## midiデータからtrie木を作る ##############
-
 
 pitchSequence, positionSequence, velocitySequence, = midiModule.getMidiDatas("./midi/bach_2.mid")
 
