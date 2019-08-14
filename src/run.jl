@@ -1,10 +1,7 @@
 include("./src/trieMusic.jl")
 include("./src/midi.jl")
-
 ############## midiデータからtrie木を作る ##############
-
 pitchSequence, positionSequence, velocitySequence, = midiModule.getMidiDatas("./midi/bach_2.mid")
-
 #階差数列に変換
 differenceSequence = trieMusic.seqenceToDifferenceSequence(pitchSequence)
 #2値の数列に変換
@@ -14,20 +11,39 @@ binarySequence = trieMusic.sequenceToBinarySequence(differenceSequence)
 bitAry, label, eachLevelNodesAccumulatedNumber, levelBoundaryBaIdx = @time trieMusic.sequenceToLouds(binarySequence)
 #全部分列の情報を取得する
 subSequences, startSeqIdxes, endSeqIdxes = trieMusic.getAllSubSequences(label, pitchSequence, eachLevelNodesAccumulatedNumber)
-
 #全部分列のDTW距離を計算する
 println(trieMusic.calcDtwDistances(subSequences))
-
 #ルートノードの直下から指定したノードまでの部分列の形状を持つ、実際の部分列群を取得
 # subSequences, startSeqIdxes, endSeqIdxes = trieMusic.getMatchSubsequences(pitchSequence, label, eachLevelNodesAccumulatedNumber, 421)
-
 # #取得した部分列群を表示
 # trieMusic.plotSubsequences(pitchSequence, subSequences, startSeqIdxes, endSeqIdxes)
-
 #PlantUMLファイルを生成　長さによっては出力ファイルが大きくなるので注意
 trieMusic.trieToPuml(bitAry, label)
-
-
 include("./src/music21.jl")
-music21.generateXml(Dict("p" => [61, 62, 63, 64], "d" => [[[3, 2, "half", "half"]],[[3, 2, "half", "half"]],[[3, 2, "half", "half"]]]))
-
+music21.generateXml([Dict("p" => [61, 62, 63, 64, 65, 66],
+"d" => [
+       Dict(
+           "tuplet" => [[3, 2, "half"]],
+           "type" => "half"
+       ),
+       Dict(
+           "tuplet" => [[3, 2, "half"],[5, 4, "quarter"]],
+           "type" => "quarter"
+       ),
+       Dict(
+           "tuplet" => [[3, 2, "half"],[5, 4, "quarter"]],
+           "type" => "quarter"
+       ),
+       Dict(
+           "tuplet" => [[3, 2, "half"],[5, 4, "quarter"]],
+           "type" => "quarter"
+       ),
+       Dict(
+           "tuplet" => [[3, 2, "half"],[5, 4, "quarter"]],
+           "type" => "quarter"
+       ),
+       Dict(
+           "tuplet" => [[3, 2, "half"],[5, 4, "quarter"]],
+           "type" => "quarter"
+       ),
+   ])])

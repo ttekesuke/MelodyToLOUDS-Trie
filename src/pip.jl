@@ -13,7 +13,7 @@ using PyCall
         # if !is_non_system(PyCall.pyprogramname)
         #     options = `--user $options`
         # end
-        run(`$(PyCall.pyprogramname) -m pip install $options -- $packages`)
+        run(`$(PyCall.pyprogramname) -m pip install -U $options -- $packages`)
         # Once #578 is merged:
         # run(PyCall.python_cmd(`-m pip install $options $packages`))
     end
