@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.0"><movement-title>testXML</movement-title><part-list><score-part id="piano"><part-name>piano</part-name></score-part></part-list><part id="piano"><measure number="1"><attributes><divisions>10080</divisions><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>10080</duration><type>quarter</type></note></measure></part></score-partwise>

@@ -19,31 +19,3 @@ println(trieMusic.calcDtwDistances(subSequences))
 # trieMusic.plotSubsequences(pitchSequence, subSequences, startSeqIdxes, endSeqIdxes)
 #PlantUMLファイルを生成　長さによっては出力ファイルが大きくなるので注意
 trieMusic.trieToPuml(bitAry, label)
-include("./src/music21.jl")
-music21.generateXml([Dict("p" => [61, 62, 63, 64, 65, 66],
-"d" => [
-       Dict(
-           "tuplet" => [[3, 2, "half"]],
-           "type" => "half"
-       ),
-       Dict(
-           "tuplet" => [[3, 2, "half"],[5, 4, "quarter"]],
-           "type" => "quarter"
-       ),
-       Dict(
-           "tuplet" => [[3, 2, "half"],[5, 4, "quarter"]],
-           "type" => "quarter"
-       ),
-       Dict(
-           "tuplet" => [[3, 2, "half"],[5, 4, "quarter"]],
-           "type" => "quarter"
-       ),
-       Dict(
-           "tuplet" => [[3, 2, "half"],[5, 4, "quarter"]],
-           "type" => "quarter"
-       ),
-       Dict(
-           "tuplet" => [[3, 2, "half"],[5, 4, "quarter"]],
-           "type" => "quarter"
-       ),
-   ])])
