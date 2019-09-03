@@ -1,5 +1,6 @@
 include("./src/trieMusic.jl")
 include("./src/midi.jl")
+
 ############## midiデータからtrie木を作る ##############
 pitchSequence, positionSequence, velocitySequence, = midiModule.getMidiDatas("./midi/bach_2.mid")
 #階差数列に変換
@@ -19,3 +20,7 @@ println(trieMusic.calcDtwDistances(subSequences))
 # trieMusic.plotSubsequences(pitchSequence, subSequences, startSeqIdxes, endSeqIdxes)
 #PlantUMLファイルを生成　長さによっては出力ファイルが大きくなるので注意
 trieMusic.trieToPuml(bitAry, label)
+
+
+include("./src/musicXML.jl")
+musicXML.generateMusicXML()
