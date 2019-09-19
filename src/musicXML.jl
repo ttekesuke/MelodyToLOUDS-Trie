@@ -25,7 +25,7 @@ function generateMusicXML()
     line = ElementNode("line")
     note = ElementNode("note")
 # タイトル
-    addelement!(root, "movement-title", "trieMusic")
+    addelement!(root, "movement-title", "trieMusics")
 # パートリスト
     link!(root, partList)
     partName.content = "piano"
