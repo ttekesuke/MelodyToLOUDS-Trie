@@ -1,4 +1,5 @@
 # trieMusic
+test
 
 [![Build Status](https://travis-ci.com/ttekesuke/trieMusic.jl.svg?branch=master)](https://travis-ci.com/ttekesuke/trieMusic.jl)
 [![Codecov](https://codecov.io/gh/ttekesuke/trieMusic.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ttekesuke/trieMusic.jl)
